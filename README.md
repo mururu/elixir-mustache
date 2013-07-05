@@ -8,6 +8,7 @@ WIP
 
 ```elixir
 Mustache.render("Hello {{planet}}", [planet: "World!"])
+#=> "Hello, World!"
 ```
 
 ## Links
