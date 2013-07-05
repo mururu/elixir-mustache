@@ -7,7 +7,7 @@ WIP
 ## Usage
 
 ```elixir
-Mustache.render("Hello {{planet}}", [planet: "World!"])
+Mustache.render("Hello, {{planet}}", [planet: "World!"])
 #=> "Hello, World!"
 ```
 
