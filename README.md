@@ -16,6 +16,7 @@ Mustache.render("Hello, {{planet}}", [planet: "World!"])
 * [mustache(5) -- Logic-less templates.](http://mustache.github.io/mustache.5.html)
 
 ## TODO
+* Improve error message
 * More tests
 * Various API
 * Support partials
