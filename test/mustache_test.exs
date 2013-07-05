@@ -19,5 +19,26 @@ defmodule MustacheTest do
   test "14", do: assert Mustache.render("{{^ a }}1{{/ a }}", [a: []]) == "1"
   test "15", do: assert Mustache.render("{{^ a }}1{{/ a }}", [a: true]) == ""
   test "16", do: assert Mustache.render("{{^ a }}1{{/ a }}", [a: [1]]) == ""
+  test "17" do
+    template = """
+    {{! ignore this line! }}
+    Hello {{name}}
+    {{! ignore this line! }}
+    You have just won {{value}} dollars!
+    {{#in_ca}}
+    Well, {{taxed_value}} dollars, after taxes.
+    {{/in_ca}}
+    a{{! dont ignore this line! }}
+    """
 
+    expected = """
+    Hello mururu
+    You have just won 1000 dollars!
+    Well, 50 dollars, after taxes.
+    Well, 40 dollars, after taxes.
+    a
+    """
+
+    assert Mustache.render(template, [name: "mururu", value: 1000, in_ca: [[taxed_value: 50], [taxed_value: 40]]]) == expected
+  end
 end
