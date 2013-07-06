@@ -102,12 +102,19 @@ defmodule Mustache.Compiler do
   # utils
 
   def to_coll(term, vars) when is_list(term) do
-    Enum.map term, fn(elem) ->
-      if is_keyword?(elem) do
-        Enum.map(vars, fn(x) -> elem[x] end)
-      else
-        to_nilcoll(vars)
-      end
+    cond do
+      term == [] ->
+        []
+      is_keyword?(term) ->
+       [Enum.map(vars, fn(x) -> term[x] end)]
+      true ->
+        Enum.map term, fn(elem) ->
+          if is_keyword?(elem) do
+            Enum.map(vars, fn(x) -> elem[x] end)
+          else
+            to_nilcoll(vars)
+          end
+        end
     end
   end
 

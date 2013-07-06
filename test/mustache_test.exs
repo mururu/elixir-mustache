@@ -19,7 +19,9 @@ defmodule MustacheTest do
   test "14", do: assert Mustache.render("{{^ a }}1{{/ a }}", [a: []]) == "1"
   test "15", do: assert Mustache.render("{{^ a }}1{{/ a }}", [a: true]) == ""
   test "16", do: assert Mustache.render("{{^ a }}1{{/ a }}", [a: [1]]) == ""
-  test "17" do
+  test "17", do: assert Mustache.render("{{# a }}{{b}}{{/ a }}", a: [b: 2]) == "2"
+  test "18", do: assert Mustache.render("{{^ a }}{{b}}{{/ a }}", a: [b: 2]) == ""
+  test "19" do
     template = """
     {{! ignore this line! }}
     Hello {{name}}
