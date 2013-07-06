@@ -227,7 +227,9 @@ defmodule Mustache.Compiler do
   end
 
   def escape_html(str) do
-    escape_html(:unicode.characters_to_list(str), []) |> Enum.reverse |> to_binary
+    escape_html(:unicode.characters_to_list(str), [])
+    |> Enum.reverse
+    |> to_binary
   end
 
   @table_for_escape_html [
