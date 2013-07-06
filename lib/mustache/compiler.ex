@@ -1,4 +1,6 @@
 defmodule Mustache.Compiler do
+  import Kernel, except: [to_binary: 1]
+
   def compile(source, options) do
     line = options[:line] || 1
     tokens = Mustache.Tokenizer.tokenize(source, line)
@@ -109,7 +111,7 @@ defmodule Mustache.Compiler do
   end
 
   defp handle_variable(buffer, var) do
-    quote do: unquote(buffer) <> Mustache.Compiler.escape_html(to_binary(unquote(var)))
+    quote do: unquote(buffer) <> Mustache.Compiler.escape_html(Mustache.Compiler.to_binary(unquote(var)))
   end
 
   defp handle_unescaped_variable(buffer, var) do
@@ -194,6 +196,35 @@ defmodule Mustache.Compiler do
 
   def to_coll_for_dot(term) when is_list(term), do: Enum.map(term, [&1])
   def to_col_for_dot(term), do: [[term]]
+
+  def to_binary(float) when is_float(float) do
+    bin = round(float * 100000000000000) |> Kernel.to_binary
+    { integer, decimal } = split_float(bin)
+    Kernel.to_binary([integer, ".", decimal])
+  end
+  def to_binary(other), do: Kernel.to_binary(other)
+
+  defp split_float(bin) do
+    binary_to_list(bin)
+    |> :lists.reverse
+    |> split_float(0, '')
+  end
+
+  defp split_float(list, 14, '') do
+    { :lists.reverse(list), '0' }
+  end
+
+  defp split_float(list, 14, acc) do
+    { :lists.reverse(list), acc }
+  end
+
+  defp split_float([?0|t], i, acc) do
+    split_float(t, i + 1, acc)
+  end
+
+  defp split_float([h|t], i, acc) do
+    split_float(t, i + 1, [h|acc])
+  end
 
   def escape_html(str) do
     escape_html(:unicode.characters_to_list(str), []) |> Enum.reverse |> to_binary
