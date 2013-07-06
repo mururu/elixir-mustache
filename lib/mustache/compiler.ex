@@ -30,7 +30,7 @@ defmodule Mustache.Compiler do
 
     new_buffer =
       if inner_dot_flg do
-        if Enum.count(inner_vars) > 1 do
+        if length(inner_vars) > 1 do
           raise(SyntaxError, description: "dot and other cannot be together")
         else
           handle_expr_including_dot(expr, atom)
@@ -51,7 +51,7 @@ defmodule Mustache.Compiler do
 
     new_buffer =
       if inner_dot_flg do
-        if Enum.count(inner_vars) > 1 do
+        if length(inner_vars) > 1 do
           raise(SyntaxError, description: "dot and other cannot be together")
         else
           handle_inverted_expr_including_dot(expr, atom)
@@ -184,7 +184,7 @@ defmodule Mustache.Compiler do
   def to_coll(term, _vars) when term == nil or term == false, do: []
   def to_coll(_term, vars), do: [to_nilcoll(vars)]
 
-  def to_nilcoll(vars), do: List.duplicate(nil, Enum.count(vars))
+  def to_nilcoll(vars), do: List.duplicate(nil, length(vars))
 
   defp is_keyword?(list) when is_list(list), do: :lists.all(is_keyword_tuple?(&1), list)
   defp is_keyword?(_), do: false
