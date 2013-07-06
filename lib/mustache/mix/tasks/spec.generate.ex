@@ -40,7 +40,29 @@ defmodule Mix.Tasks.Spec.Generate do
   def extract_tests_from_file(filename) do
     { :ok, [contents] } = :yaml.load_file(filename)
 
-    { String.capitalize(Path.basename(filename, "yml")), contents["tests"] }
+    tests = Enum.map contents["tests"], fn(test) ->
+      data = test["data"]
+      data = to_keyword(data)
+      Enum.map test, fn({k,v}) ->
+        case k do
+          "data" -> { k, data }
+          _ -> { k, v }
+        end
+      end
+    end
+
+    { String.capitalize(Path.basename(filename, ".yml")), tests }
+  end
+
+  def to_keyword(data) when is_list(data) do
+    Enum.map(data, to_keyword(&1))
+  end
+
+  def to_keyword({ key, value }) when is_binary(key) do
+    { binary_to_atom(key), to_keyword(value) }
+  end
+
+  def to_keyword(other), do: other
 
   def filter_by_options(list, options) do
     IO.inspect list
