@@ -45,4 +45,6 @@ defmodule MustacheTest do
     assert Mustache.render(template, [name: "mururu", value: 1000, in_ca: [[taxed_value: 50], [taxed_value: 40]]]) == expected
   end
   test "21", do: assert Mustache.render("{{#a}}{{.}}{{/a}}", a: [1,2,3]) == "123"
+  test "22", do: assert Mustache.render("{{a.b}}", a: [b: 1]) == "1"
+  test "23", do: assert Mustache.render("{{a.b}}", a: [[b: 1]]) == ""
 end

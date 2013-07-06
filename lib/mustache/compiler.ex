@@ -100,6 +100,20 @@ defmodule Mustache.Compiler do
     generate_buffer(t, buffer, [atom|vars], parent, true)
   end
 
+  defp generate_buffer([{ :dotted_name, line, [atom|atoms] } | t], buffer, vars, parent, dot_flg) do
+    var = { atom, [line: line], nil }
+    buffer = handle_dotted_name(buffer, var, atoms)
+
+    generate_buffer(t, buffer, [atom|vars], parent, dot_flg)
+  end
+
+  defp generate_buffer([{ :unescaped_dotted_name, line, [atom|atoms] } | t], buffer, vars, parent, dot_flg) do
+    var = { atom, [line: line], nil }
+    buffer = handle_unescaped_dotted_name(buffer, var, atoms)
+
+    generate_buffer(t, buffer, [atom|vars], parent, dot_flg)
+  end
+
   defp generate_buffer([], buffer, vars, :mustache_root, _dot_flg) do
     { [], buffer, vars }
   end
@@ -116,6 +130,24 @@ defmodule Mustache.Compiler do
 
   defp handle_unescaped_variable(buffer, var) do
     quote do: unquote(buffer) <> to_binary(unquote(var))
+  end
+
+  def handle_dotted_name(buffer, var, atoms) do
+    quote do
+      buffer = unquote(buffer)
+      adding = Mustache.Compiler.recur_access(unquote(var), unquote(atoms)) |> Mustache.Compiler.to_binary
+      buffer <> adding
+    end
+  end
+
+  def handle_unescaped_dotted_name(buffer, var, atoms) do
+    quote do
+      buffer = unquote(buffer)
+      adding = Mustache.Compiler.recur_access(unquote(var), unquote(atoms))
+        |> Mustache.Compiler.to_binary
+        |> Mustache.Compiler.html_escape
+      buffer <> adding
+    end
   end
 
   defp handle_expr(expr, atom, vars) do
@@ -203,6 +235,11 @@ defmodule Mustache.Compiler do
     Kernel.to_binary([integer, ".", decimal])
   end
   def to_binary(other), do: Kernel.to_binary(other)
+
+  def recur_access(term, []), do: term
+  def recur_access(term, [atom|t]) do
+    if is_keyword?(term), do: recur_access(term[atom], t), else: ""
+  end
 
   defp split_float(bin) do
     binary_to_list(bin)

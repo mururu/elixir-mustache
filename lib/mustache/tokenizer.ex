@@ -34,9 +34,15 @@ defmodule Mustache.Tokenizer do
     acc = tokenize_text(current_line, buffer, acc)
     { var, new_line, rest } = tokenize_variable(t, line, [])
 
-    kind = if var == :., do: :unescaped_dot, else: :unescaped_variable
-
-    tokenize(rest, new_line, new_line, [], [{ kind, line, var } | acc])
+    cond do
+      var == :. ->
+        tokenize(rest, new_line, new_line, [], [{ :unescaped_dot, line, var } | acc])
+      to_binary(var) =~ %r/^\w+(\.\w+)+$/ ->
+        atoms = to_binary(var) |> String.split(".") |> Enum.map(binary_to_atom(&1))
+        tokenize(rest, new_line, new_line, [], [{ :unescaped_dotted_name, line, atoms } | acc])
+      true ->
+        tokenize(rest, new_line, new_line, [], [{ :unescaped_variable, line, var } | acc])
+    end
   end
 
   defp tokenize('{{#' ++ t, current_line, line, buffer, acc) do
@@ -67,9 +73,15 @@ defmodule Mustache.Tokenizer do
     acc = tokenize_text(current_line, buffer, acc)
     { var, new_line, rest } = tokenize_variable(t, line, [])
 
-    kind = if var == :., do: :dot, else: :variable
-
-    tokenize(rest, new_line, new_line, [], [{ kind, line, var } | acc])
+    cond do
+      var == :. ->
+        tokenize(rest, new_line, new_line, [], [{ :dot, line, var } | acc])
+      to_binary(var) =~ %r/^\w+(\.\w+)+$/ ->
+        atoms = to_binary(var) |> String.split(".") |> Enum.map(binary_to_atom(&1))
+        tokenize(rest, new_line, new_line, [], [{ :dotted_name, line, atoms } | acc])
+      true ->
+        tokenize(rest, new_line, new_line, [], [{ :variable, line, var } | acc])
+    end
   end
 
   defp tokenize('\n' ++ t, current_line, line, buffer, acc) do
