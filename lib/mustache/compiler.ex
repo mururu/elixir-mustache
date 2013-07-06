@@ -3,56 +3,102 @@ defmodule Mustache.Compiler do
     line = options[:line] || 1
     tokens = Mustache.Tokenizer.tokenize(source, line)
 
-    { [], buffer, inner_vars } = generate_buffer(tokens, "", [], :mustache_root)
+    { [], buffer, inner_vars } = generate_buffer(tokens, "", [], :mustache_root, false)
 
     handle_expr(buffer, :mustache, inner_vars)
   end
 
   ## private
 
-  defp generate_buffer([{ :text, _line, text } | t], buffer, vars, parent) do
+  defp generate_buffer([{ :text, _line, text } | t], buffer, vars, parent, dot_flg) do
     buffer = handle_text(buffer, text)
 
-    generate_buffer(t, buffer, vars, parent)
+    generate_buffer(t, buffer, vars, parent, dot_flg)
   end
 
-  defp generate_buffer([{ :unescaped_variable, line, atom } | t], buffer, vars, parent) do
+  defp generate_buffer([{ :unescaped_variable, line, atom } | t], buffer, vars, parent, dot_flg) do
     var = { atom, [line: line], nil }
-    buffer = handle_unescape_variable(buffer, var)
+    buffer = handle_unescaped_variable(buffer, var)
 
-    generate_buffer(t, buffer, [atom|vars], parent)
+    generate_buffer(t, buffer, [atom|vars], parent, dot_flg)
   end
 
-  defp generate_buffer([{ :section, _line, atom } | t], buffer, vars, parent) do
-    { rest, expr, inner_vars } = generate_buffer(t, "", [], atom)
+  defp generate_buffer([{ :section, _line, atom } | t], buffer, vars, parent, dot_flg) do
+    { rest, expr, inner_vars, inner_dot_flg } = generate_buffer(t, "", [], atom, false)
 
-    new_buffer = handle_expr(expr, atom, inner_vars)
+    inner_vars = Enum.uniq(inner_vars)
+
+    new_buffer =
+      if inner_dot_flg do
+        if Enum.count(inner_vars) > 1 do
+          raise(SyntaxError, description: "dot and other cannot be together")
+        else
+          handle_expr_including_dot(expr, atom)
+        end
+      else
+        handle_expr(expr, atom, inner_vars)
+      end
+
     buffer = handle_text(buffer, new_buffer)
 
-    generate_buffer(rest, buffer, [atom|vars], parent)
+    generate_buffer(rest, buffer, [atom|vars], parent, dot_flg)
   end
 
-  defp generate_buffer([{ :inverted_section, _line, atom } | t], buffer, vars, parent) do
-    { rest, expr, inner_vars } = generate_buffer(t, "", [], atom)
+  defp generate_buffer([{ :inverted_section, _line, atom } | t], buffer, vars, parent, dot_flg) do
+    { rest, expr, inner_vars, inner_dot_flg } = generate_buffer(t, "", [], atom, false)
 
-    new_buffer = handle_inverted_expr(expr, atom, inner_vars)
+    inner_vars = Enum.uniq(inner_vars)
+
+    new_buffer =
+      if inner_dot_flg do
+        if Enum.count(inner_vars) > 1 do
+          raise(SyntaxError, description: "dot and other cannot be together")
+        else
+          handle_inverted_expr_including_dot(expr, atom)
+        end
+      else
+        handle_inverted_expr(expr, atom, inner_vars)
+  end
+
     buffer = handle_text(buffer, new_buffer)
 
-    generate_buffer(rest, buffer, [atom|vars], parent)
+    generate_buffer(rest, buffer, [atom|vars], parent, dot_flg)
   end
 
-  defp generate_buffer([{ :end_section, _line, parent } | t], buffer, vars, parent) do
-    { t, buffer, vars }
+  defp generate_buffer([{ :end_section, _line, parent } | t], buffer, vars, parent, dot_flg) do
+    { t, buffer, vars, dot_flg }
   end
 
-  defp generate_buffer([{ :variable, line, atom } | t], buffer, vars, parent) do
+  defp generate_buffer([{ :variable, line, atom } | t], buffer, vars, parent, dot_flg) do
     var = { atom, [line: line], nil }
     buffer = handle_variable(buffer, var)
 
-    generate_buffer(t, buffer, [atom|vars], parent)
+    generate_buffer(t, buffer, [atom|vars], parent, dot_flg)
   end
 
-  defp generate_buffer([], buffer, vars, :mustache_root) do
+  defp generate_buffer([{ :dot, _line, _atom } | _], _buffer, _vars, :mustache_root, _dot_flg) do
+    raise SyntaxError, description: "Top level dotted names is invalid"
+  end
+
+  defp generate_buffer([{ :dot, line, atom } | t], buffer, vars, parent, _dot_flg) do
+    var = { atom, [line: line], nil }
+    buffer = handle_variable(buffer, var)
+
+    generate_buffer(t, buffer, [atom|vars], parent, true)
+  end
+
+  defp generate_buffer([{ :unescaped_dot, _line, _atom } | _], _buffer, _vars, :mustache_root, _dot_flg) do
+    raise SyntaxError, description: "Top level dotted names is invalid"
+  end
+
+  defp generate_buffer([{ :unescaped_dot, line, atom } | t], buffer, vars, parent, _dot_flg) do
+    var = { atom, [line: line], nil }
+    buffer = handle_unescaped_variable(buffer, var)
+
+    generate_buffer(t, buffer, [atom|vars], parent, true)
+  end
+
+  defp generate_buffer([], buffer, vars, :mustache_root, _dot_flg) do
     { [], buffer, vars }
   end
 
@@ -66,7 +112,7 @@ defmodule Mustache.Compiler do
     quote do: unquote(buffer) <> Mustache.Compiler.escape_html(to_binary(unquote(var)))
   end
 
-  defp handle_unescape_variable(buffer, var) do
+  defp handle_unescaped_variable(buffer, var) do
     quote do: unquote(buffer) <> to_binary(unquote(var))
   end
 
@@ -99,6 +145,23 @@ defmodule Mustache.Compiler do
     end
   end
 
+  defp handle_expr_including_dot(expr, atom) do
+    var = { atom, [], nil }
+    real_vars = [{ :., [], nil}]
+    fun = {:fn,[],[[do: {:->,[],[{[real_vars],[],expr}]}]]}
+    quote do
+      var = unquote(var)
+      fun = unquote(fun)
+      coll = Mustache.Compiler.to_coll_for_dot(var)
+      Enum.map(coll, fun) |> Enum.join
+    end
+  end
+
+  defp handle_inverted_expr_including_dot(_expr, _atom) do
+    quote do: ""
+  end
+
+
   # utils
 
   def to_coll(term, vars) when is_list(term) do
@@ -128,6 +191,9 @@ defmodule Mustache.Compiler do
 
   defp is_keyword_tuple?({ x, _ }) when is_atom(x), do: true
   defp is_keyword_tuple?(_), do: false
+
+  def to_coll_for_dot(term) when is_list(term), do: Enum.map(term, [&1])
+  def to_col_for_dot(term), do: [[term]]
 
   def escape_html(str) do
     escape_html(:unicode.characters_to_list(str), []) |> Enum.reverse |> to_binary

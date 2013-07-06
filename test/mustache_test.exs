@@ -20,8 +20,9 @@ defmodule MustacheTest do
   test "15", do: assert Mustache.render("{{^ a }}1{{/ a }}", [a: true]) == ""
   test "16", do: assert Mustache.render("{{^ a }}1{{/ a }}", [a: [1]]) == ""
   test "17", do: assert Mustache.render("{{# a }}{{b}}{{/ a }}", a: [b: 2]) == "2"
-  test "18", do: assert Mustache.render("{{^ a }}{{b}}{{/ a }}", a: [b: 2]) == ""
-  test "19" do
+  test "18", do: assert Mustache.render("{{# a }}{{b}}{{c}}{{/ a }}", a: [b: 2, c: 3]) == "23"
+  test "19", do: assert Mustache.render("{{^ a }}{{b}}{{/ a }}", a: [b: 2]) == ""
+  test "20" do
     template = """
     {{! ignore this line! }}
     Hello {{name}}
@@ -43,4 +44,5 @@ defmodule MustacheTest do
 
     assert Mustache.render(template, [name: "mururu", value: 1000, in_ca: [[taxed_value: 50], [taxed_value: 40]]]) == expected
   end
+  test "21", do: assert Mustache.render("{{#a}}{{.}}{{/a}}", a: [1,2,3]) == "123"
 end

@@ -7,6 +7,8 @@ defmodule Mustache.Tokenizer do
   { :inverted_section,   line, contents :: atom }
   { :end_section, line, contents :: atom }
   { :variable,   line, contents :: atom }
+  { :dot, line, contents :: atom}
+  { :unescaped_dot, line, contents :: atom }
   """
   def tokenize(bin, line) when is_binary(bin) do
     tokenize(:unicode.characters_to_list(bin), line)
@@ -32,7 +34,9 @@ defmodule Mustache.Tokenizer do
     acc = tokenize_text(current_line, buffer, acc)
     { var, new_line, rest } = tokenize_variable(t, line, [])
 
-    tokenize(rest, new_line, new_line, [], [{ :unescaped_variable, line, var } | acc])
+    kind = if var == :., do: :unescaped_dot, else: :unescaped_variable
+
+    tokenize(rest, new_line, new_line, [], [{ kind, line, var } | acc])
   end
 
   defp tokenize('{{#' ++ t, current_line, line, buffer, acc) do
@@ -63,7 +67,9 @@ defmodule Mustache.Tokenizer do
     acc = tokenize_text(current_line, buffer, acc)
     { var, new_line, rest } = tokenize_variable(t, line, [])
 
-    tokenize(rest, new_line, new_line, [], [{ :variable, line, var } | acc])
+    kind = if var == :., do: :dot, else: :variable
+
+    tokenize(rest, new_line, new_line, [], [{ kind, line, var } | acc])
   end
 
   defp tokenize('\n' ++ t, current_line, line, buffer, acc) do
