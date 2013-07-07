@@ -13,8 +13,13 @@ defmodule Mix.Tasks.Spec.Generate do
           template = <%= inspect(test["template"]) %>
           data = <%= inspect(test["data"]) %>
           expected = <%= inspect(test["expected"]) %>
+          <%= if test["partials"] do %>
+          partials = <%= inspect(test["partials"]) %>
 
+          assert Mustache.render(template, data, partials: partials) == expected
+          <% else %>
           assert Mustache.render(template, data) == expected
+          <% end %>
         end
       <% end %>
     end
@@ -43,9 +48,12 @@ defmodule Mix.Tasks.Spec.Generate do
     tests = Enum.map contents["tests"], fn(test) ->
       data = test["data"]
       data = to_keyword(data)
+      partials = test["partials"]
+      partials = to_keyword(partials)
       Enum.map test, fn({k,v}) ->
         case k do
           "data" -> { k, data }
+          "partials" -> { k, partials }
           _ -> { k, v }
         end
       end
