@@ -73,10 +73,13 @@ defmodule Mix.Tasks.Spec.Generate do
   def to_keyword(other), do: other
 
   def filter_by_options(list, options) do
-    if options[:only] do
-      Enum.filter(list, fn(x) -> Path.basename(x, ".yml") == options[:only] end)
-    else
-      list
+    cond do
+      options[:only] ->
+        Enum.filter(list, fn(x) -> Path.basename(x, ".yml") == options[:only] end)
+      options[:except] ->
+        Enum.filter(list, fn(x) -> Path.basename(x, ".yml") != options[:except] end)
+      true ->
+        list
     end
   end
 end
