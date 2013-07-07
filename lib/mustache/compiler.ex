@@ -188,7 +188,7 @@ defmodule Mustache.Compiler do
   end
 
   defp handle_unescaped_variable(buffer, var) do
-    quote do: unquote(buffer) <> to_binary(unquote(var))
+    quote do: unquote(buffer) <> Mustache.Compiler.to_binary(unquote(var))
   end
 
   def handle_dotted_name(buffer, var, atoms) do
