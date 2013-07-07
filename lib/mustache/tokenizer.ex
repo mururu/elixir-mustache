@@ -13,6 +13,7 @@ defmodule Mustache.Tokenizer do
   { :unescaped_dotted_name, line, contents :: [atom..] }
   { :dotted_name_section, line, contents :: [atom..] }
   { :dotted_name_inverted_section, line, contents :: [atom..] }
+  { :partial, line, contents :: contents :: atom }
   """
   def tokenize(bin, line) when is_binary(bin) do
     tokenize(:unicode.characters_to_list(bin), line)
@@ -88,6 +89,15 @@ defmodule Mustache.Tokenizer do
     end
   end
 
+ defp tokenize('{{>' ++ t, current_line, line, buffer, acc) do
+    ignore_break_flg = ignore_break?(buffer, acc)
+    { var, new_line, rest, ignore_tail_whitespace_flg } = tokenize_variable(t, line, [], ignore_break_flg)
+    acc = tokenize_text(current_line, buffer, acc, ignore_tail_whitespace_flg)
+
+    tokenize(rest, new_line, new_line, [], [{ :partial, line, var } | acc])
+  end
+
+
   defp tokenize('{{' ++ t, current_line, line, buffer, acc) do
     acc = tokenize_text(current_line, buffer, acc)
     { var, new_line, rest, _ } = tokenize_variable(t, line, [])
@@ -103,7 +113,7 @@ defmodule Mustache.Tokenizer do
     end
   end
 
-  defp tokenize('\r\n' ++ t, current_line, line, buffer, acc) do
+   defp tokenize('\r\n' ++ t, current_line, line, buffer, acc) do
     tokenize(t, current_line, line + 1, [?\n,?\r|buffer], acc)
   end
 

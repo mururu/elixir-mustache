@@ -5,28 +5,32 @@ defmodule Mustache.Compiler do
     line = options[:line] || 1
     tokens = Mustache.Tokenizer.tokenize(source, line)
 
-    { [], buffer, inner_vars } = generate_buffer(tokens, "", [], :mustache_root, false)
+    partials = options[:partials] || []
+
+    partials = Enum.map partials, fn({ k, partial }) -> { k, Mustache.Tokenizer.tokenize(partial, line) } end
+
+    { [], buffer, inner_vars } = generate_buffer(tokens, "", [], partials, :mustache_root, :mustache_root, false)
 
     handle_expr(buffer, :mustache, inner_vars)
   end
 
   ## private
 
-  defp generate_buffer([{ :text, _line, text } | t], buffer, vars, parent, dot_flg) do
+  defp generate_buffer([{ :text, _line, text } | t], buffer, vars, partials, parent, root_parent, dot_flg) do
     buffer = handle_text(buffer, text)
 
-    generate_buffer(t, buffer, vars, parent, dot_flg)
+    generate_buffer(t, buffer, vars, partials, parent, root_parent, dot_flg)
   end
 
-  defp generate_buffer([{ :unescaped_variable, line, atom } | t], buffer, vars, parent, dot_flg) do
+  defp generate_buffer([{ :unescaped_variable, line, atom } | t], buffer, vars, partials, parent, root_parent, dot_flg) do
     var = { atom, [line: line], nil }
     buffer = handle_unescaped_variable(buffer, var)
 
-    generate_buffer(t, buffer, [atom|vars], parent, dot_flg)
+    generate_buffer(t, buffer, [atom|vars], partials, parent, root_parent, dot_flg)
   end
 
-  defp generate_buffer([{ :section, _line, atom } | t], buffer, vars, parent, dot_flg) do
-    { rest, expr, inner_vars, inner_dot_flg } = generate_buffer(t, "", [], atom, false)
+  defp generate_buffer([{ :section, _line, atom } | t], buffer, vars, partials, parent, root_parent, dot_flg) do
+    { rest, expr, inner_vars, inner_dot_flg } = generate_buffer(t, "", [], partials, atom, root_parent, false)
 
     inner_vars = Enum.uniq(inner_vars)
 
@@ -43,11 +47,11 @@ defmodule Mustache.Compiler do
 
     buffer = handle_text(buffer, new_buffer)
 
-    generate_buffer(rest, buffer, [atom|vars], parent, dot_flg)
+    generate_buffer(rest, buffer, [atom|vars], partials, parent, root_parent, dot_flg)
   end
 
-  defp generate_buffer([{ :inverted_section, _line, atom } | t], buffer, vars, parent, dot_flg) do
-    { rest, expr, inner_vars, inner_dot_flg } = generate_buffer(t, "", [], atom, false)
+  defp generate_buffer([{ :inverted_section, _line, atom } | t], buffer, vars, partials, parent, root_parent, dot_flg) do
+    { rest, expr, inner_vars, inner_dot_flg } = generate_buffer(t, "", [], partials, atom, root_parent, false)
 
     inner_vars = Enum.uniq(inner_vars)
 
@@ -64,58 +68,58 @@ defmodule Mustache.Compiler do
 
     buffer = handle_text(buffer, new_buffer)
 
-    generate_buffer(rest, buffer, [atom|vars], parent, dot_flg)
+    generate_buffer(rest, buffer, [atom|vars], partials, parent, root_parent, dot_flg)
   end
 
-  defp generate_buffer([{ :end_section, _line, parent } | t], buffer, vars, parent, dot_flg) do
+  defp generate_buffer([{ :end_section, _line, parent } | t], buffer, vars, _partials, parent, _root_parent, dot_flg) do
     { t, buffer, vars, dot_flg }
   end
 
-  defp generate_buffer([{ :variable, line, atom } | t], buffer, vars, parent, dot_flg) do
+  defp generate_buffer([{ :variable, line, atom } | t], buffer, vars, partials, parent, root_parent, dot_flg) do
     var = { atom, [line: line], nil }
     buffer = handle_variable(buffer, var)
 
-    generate_buffer(t, buffer, [atom|vars], parent, dot_flg)
+    generate_buffer(t, buffer, [atom|vars], partials, parent, root_parent, dot_flg)
   end
 
-  defp generate_buffer([{ :dot, _line, _atom } | _], _buffer, _vars, :mustache_root, _dot_flg) do
+  defp generate_buffer([{ :dot, _line, _atom } | _], _buffer, _partials, _vars, root_parent, root_parent, _dot_flg) do
     raise SyntaxError, description: "Top level dotted names is invalid"
   end
 
-  defp generate_buffer([{ :dot, line, atom } | t], buffer, vars, parent, _dot_flg) do
+  defp generate_buffer([{ :dot, line, atom } | t], buffer, vars, partials, parent, root_parent, _dot_flg) do
     var = { atom, [line: line], nil }
     buffer = handle_variable(buffer, var)
 
-    generate_buffer(t, buffer, [atom|vars], parent, true)
+    generate_buffer(t, buffer, [atom|vars], partials, parent, root_parent, true)
   end
 
-  defp generate_buffer([{ :unescaped_dot, _line, _atom } | _], _buffer, _vars, :mustache_root, _dot_flg) do
+  defp generate_buffer([{ :unescaped_dot, _line, _atom } | _], _buffer, _vars, _partials, root_parent, root_parent, _dot_flg) do
     raise SyntaxError, description: "Top level dotted names is invalid"
   end
 
-  defp generate_buffer([{ :unescaped_dot, line, atom } | t], buffer, vars, parent, _dot_flg) do
+  defp generate_buffer([{ :unescaped_dot, line, atom } | t], buffer, vars, partials, parent, root_parent, _dot_flg) do
     var = { atom, [line: line], nil }
     buffer = handle_unescaped_variable(buffer, var)
 
-    generate_buffer(t, buffer, [atom|vars], parent, true)
+    generate_buffer(t, buffer, [atom|vars], partials, parent, root_parent, true)
   end
 
-  defp generate_buffer([{ :dotted_name, line, [atom|atoms] } | t], buffer, vars, parent, dot_flg) do
+  defp generate_buffer([{ :dotted_name, line, [atom|atoms] } | t], buffer, vars, partials, parent, root_parent, dot_flg) do
     var = { atom, [line: line], nil }
     buffer = handle_dotted_name(buffer, var, atoms)
 
-    generate_buffer(t, buffer, [atom|vars], parent, dot_flg)
+    generate_buffer(t, buffer, [atom|vars], partials, parent, root_parent, dot_flg)
   end
 
-  defp generate_buffer([{ :unescaped_dotted_name, line, [atom|atoms] } | t], buffer, vars, parent, dot_flg) do
+  defp generate_buffer([{ :unescaped_dotted_name, line, [atom|atoms] } | t], buffer, vars, partials, parent, root_parent, dot_flg) do
     var = { atom, [line: line], nil }
     buffer = handle_unescaped_dotted_name(buffer, var, atoms)
 
-    generate_buffer(t, buffer, [atom|vars], parent, dot_flg)
+    generate_buffer(t, buffer, [atom|vars], partials, parent, root_parent, dot_flg)
   end
 
-  defp generate_buffer([{ :dotted_name_section, _line, [atom|atoms] } | t], buffer, vars, parent, dot_flg) do
-    { rest, expr, inner_vars, inner_dot_flg } = generate_buffer(t, "", [], [atom|atoms], false)
+  defp generate_buffer([{ :dotted_name_section, _line, [atom|atoms] } | t], buffer, vars, partials, parent, root_parent, dot_flg) do
+    { rest, expr, inner_vars, inner_dot_flg } = generate_buffer(t, "", [], partials, [atom|atoms], root_parent, false)
 
     inner_vars = Enum.uniq(inner_vars)
 
@@ -132,11 +136,11 @@ defmodule Mustache.Compiler do
 
     buffer = handle_text(buffer, new_buffer)
 
-    generate_buffer(rest, buffer, [atom|vars], parent, dot_flg)
+    generate_buffer(rest, buffer, [atom|vars], partials, parent, root_parent, dot_flg)
   end
 
-  defp generate_buffer([{ :dotted_name_inverted_section, _line, [atom|atoms] } | t], buffer, vars, parent, dot_flg) do
-    { rest, expr, inner_vars, inner_dot_flg } = generate_buffer(t, "", [], [atom|atoms], false)
+  defp generate_buffer([{ :dotted_name_inverted_section, _line, [atom|atoms] } | t], buffer, vars, partials, parent, root_parent, dot_flg) do
+    { rest, expr, inner_vars, inner_dot_flg } = generate_buffer(t, "", [], partials, [atom|atoms], root_parent, false)
 
     inner_vars = Enum.uniq(inner_vars)
 
@@ -153,12 +157,23 @@ defmodule Mustache.Compiler do
 
     buffer = handle_text(buffer, new_buffer)
 
-    generate_buffer(rest, buffer, [atom|vars], parent, dot_flg)
+    generate_buffer(rest, buffer, [atom|vars], partials, parent, root_parent, dot_flg)
   end
 
+  defp generate_buffer([{ :partial, _line, atom } | t], buffer, vars, partials, parent, root_parent, dot_flg) do
+    partial = partials[atom] || []
 
+    Enum.each partial, fn(token) ->
+      case token do
+        { :partial, _, ^atom } -> raise SyntaxError, description: "Recursive partials is not supported"
+        _ -> :ok
+      end
+    end
 
-  defp generate_buffer([], buffer, vars, :mustache_root, _dot_flg) do
+    generate_buffer(partial ++ t, buffer, vars, partials, parent, root_parent, dot_flg)
+  end
+
+  defp generate_buffer([], buffer, vars, _partials, root_parent, root_parent, _dot_flg) do
     { [], buffer, vars }
   end
 
