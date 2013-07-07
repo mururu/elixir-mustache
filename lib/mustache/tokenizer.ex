@@ -9,6 +9,10 @@ defmodule Mustache.Tokenizer do
   { :variable,   line, contents :: atom }
   { :dot, line, contents :: atom}
   { :unescaped_dot, line, contents :: atom }
+  { :dotted_name, line, contents :: [atom..] }
+  { :unescaped_dotted_name, line, contents :: [atom..] }
+  { :dotted_name_section, line, contents :: [atom..] }
+  { :dotted_name_inverted_section, line, contents :: [atom..] }
   """
   def tokenize(bin, line) when is_binary(bin) do
     tokenize(:unicode.characters_to_list(bin), line)
@@ -50,7 +54,12 @@ defmodule Mustache.Tokenizer do
     acc = tokenize_text(current_line, buffer, acc)
     { var, new_line, rest } = tokenize_variable(t, line, [], ignore_break_flg)
 
-    tokenize(rest, new_line, new_line, [], [{ :section, line, var } | acc])
+    if to_binary(var) =~ %r/^\w+(\.\w+)+$/ do
+      atoms = to_binary(var) |> String.split(".") |> Enum.map(binary_to_atom(&1))
+      tokenize(rest, new_line, new_line, [], [{ :dotted_name_section, line, atoms } | acc])
+    else
+      tokenize(rest, new_line, new_line, [], [{ :section, line, var } | acc])
+    end
   end
 
   defp tokenize('{{^' ++ t, current_line, line, buffer, acc) do
@@ -58,7 +67,12 @@ defmodule Mustache.Tokenizer do
     acc = tokenize_text(current_line, buffer, acc)
     { var, new_line, rest } = tokenize_variable(t, line, [], ignore_break_flg)
 
-    tokenize(rest, new_line, new_line, [], [{ :inverted_section, line, var } | acc])
+    if to_binary(var) =~ %r/^\w+(\.\w+)+$/ do
+      atoms = to_binary(var) |> String.split(".") |> Enum.map(binary_to_atom(&1))
+      tokenize(rest, new_line, new_line, [], [{ :dotted_name_inverted_section, line, atoms } | acc])
+    else
+      tokenize(rest, new_line, new_line, [], [{ :inverted_section, line, var } | acc])
+    end
   end
 
   defp tokenize('{{/' ++ t, current_line, line, buffer, acc) do
@@ -66,7 +80,12 @@ defmodule Mustache.Tokenizer do
     acc = tokenize_text(current_line, buffer, acc)
     { var, new_line, rest } = tokenize_variable(t, line, [], ignore_break_flg)
 
-    tokenize(rest, new_line, new_line, [], [{ :end_section, line, var } | acc])
+    if to_binary(var) =~ %r/^\w+(\.\w+)+$/ do
+      atoms = to_binary(var) |> String.split(".") |> Enum.map(binary_to_atom(&1))
+      tokenize(rest, new_line, new_line, [], [{ :end_section, line, atoms } | acc])
+    else
+      tokenize(rest, new_line, new_line, [], [{ :end_section, line, var } | acc])
+    end
   end
 
   defp tokenize('{{' ++ t, current_line, line, buffer, acc) do

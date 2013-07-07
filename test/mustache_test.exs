@@ -47,4 +47,6 @@ defmodule MustacheTest do
   test "21", do: assert Mustache.render("{{#a}}{{.}}{{/a}}", a: [1,2,3]) == "123"
   test "22", do: assert Mustache.render("{{a.b}}", a: [b: 1]) == "1"
   test "23", do: assert Mustache.render("{{a.b}}", a: [[b: 1]]) == ""
+  test "24", do: assert Mustache.render("{{#a.b.c}}1{{/a.b.c}}", a: [b: [c: true]]) == "1"
+  test "25", do: assert Mustache.render("{{^a.b.c}}1{{/a.b.c}}", a: [b: [c: true]]) == ""
 end

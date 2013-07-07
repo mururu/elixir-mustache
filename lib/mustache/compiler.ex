@@ -114,6 +114,50 @@ defmodule Mustache.Compiler do
     generate_buffer(t, buffer, [atom|vars], parent, dot_flg)
   end
 
+  defp generate_buffer([{ :dotted_name_section, _line, [atom|atoms] } | t], buffer, vars, parent, dot_flg) do
+    { rest, expr, inner_vars, inner_dot_flg } = generate_buffer(t, "", [], [atom|atoms], false)
+
+    inner_vars = Enum.uniq(inner_vars)
+
+    new_buffer =
+      if inner_dot_flg do
+        if length(inner_vars) > 1 do
+          raise(SyntaxError, description: "dot and other cannot be together")
+        else
+          handle_dotted_expr_including_dot(expr, atom, atoms)
+      end
+      else
+        handle_dotted_expr(expr, atom, atoms, inner_vars)
+      end
+
+    buffer = handle_text(buffer, new_buffer)
+
+    generate_buffer(rest, buffer, [atom|vars], parent, dot_flg)
+  end
+
+  defp generate_buffer([{ :dotted_name_inverted_section, _line, [atom|atoms] } | t], buffer, vars, parent, dot_flg) do
+    { rest, expr, inner_vars, inner_dot_flg } = generate_buffer(t, "", [], [atom|atoms], false)
+
+    inner_vars = Enum.uniq(inner_vars)
+
+    new_buffer =
+      if inner_dot_flg do
+        if length(inner_vars) > 1 do
+          raise(SyntaxError, description: "dot and other cannot be together")
+        else
+          handle_dotted_inverted_expr_including_dot(expr, atom, atoms)
+        end
+      else
+        handle_dotted_inverted_expr(expr, atom, atoms, inner_vars)
+      end
+
+    buffer = handle_text(buffer, new_buffer)
+
+    generate_buffer(rest, buffer, [atom|vars], parent, dot_flg)
+  end
+
+
+
   defp generate_buffer([], buffer, vars, :mustache_root, _dot_flg) do
     { [], buffer, vars }
   end
@@ -195,6 +239,52 @@ defmodule Mustache.Compiler do
     quote do: ""
   end
 
+  # almost same handle_expr
+  defp handle_dotted_expr(expr, atom, atoms, vars) do
+    top_var = { atom, [], nil }
+    real_vars = Enum.map vars, fn(atom) -> { atom, [], nil} end
+    fun = {:fn,[],[[do: {:->,[],[{[real_vars],[],expr}]}]]}
+    quote do
+      var = Mustache.Compiler.recur_access_for_dotted(unquote(top_var), unquote(atoms))
+      vars = unquote(vars)
+      fun = unquote(fun)
+      coll = Mustache.Compiler.to_coll(var, vars)
+      Enum.map(coll, fun) |> Enum.join
+    end
+  end
+
+  # almost same handle_expr
+  defp handle_dotted_inverted_expr(expr, atom, atoms, vars) do
+    top_var = { atom, [], nil }
+    real_vars = Enum.map vars, fn(atom) -> { atom, [], nil} end
+    fun = {:fn,[],[[do: {:->,[],[{[real_vars],[],expr}]}]]}
+    quote do
+      var = Mustache.Compiler.recur_access_for_dotted(unquote(top_var), unquote(atoms))
+      vars = unquote(vars)
+      fun = unquote(fun)
+      coll = Mustache.Compiler.to_coll(var, vars)
+      case coll do
+        [] -> fun.(Mustache.Compiler.to_nilcoll(vars))
+        _  -> ""
+      end
+    end
+  end
+
+  defp handle_dotted_expr_including_dot(expr, atom, atoms) do
+    top_var = { atom, [], nil }
+    real_vars = [{ :., [], nil}]
+    fun = {:fn,[],[[do: {:->,[],[{[real_vars],[],expr}]}]]}
+    quote do
+      var = Mustache.Compiler.recur_access_for_dotted(unquote(top_var), unquote(atoms))
+      fun = unquote(fun)
+      coll = Mustache.Compiler.to_coll_for_dot(var)
+      Enum.map(coll, fun) |> Enum.join
+    end
+  end
+
+  defp handle_dotted_inverted_expr_including_dot(_expr, _atom, _atoms) do
+    quote do: ""
+  end
 
   # utils
 
@@ -238,7 +328,12 @@ defmodule Mustache.Compiler do
 
   def recur_access(term, []), do: term
   def recur_access(term, [atom|t]) do
-    if is_keyword?(term), do: recur_access(term[atom], t), else: ""
+    if is_keyword?(term), do: recur_access(term[atom], t), else: []
+  end
+
+  def recur_access_for_dotted(term, []), do: term
+  def recur_access_for_dotted(term, [atom|t]) do
+    if is_keyword?(term), do: recur_access(term[atom], t), else: []
   end
 
   defp split_float(bin) do

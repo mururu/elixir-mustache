@@ -20,6 +20,5 @@ Mustache.render("Hello, {{planet}}", [planet: "World!"])
 * More tests
 * Various API
 * Support partials
-* Support dot notation
 * Support changing delimiter
 * Speed improvements
