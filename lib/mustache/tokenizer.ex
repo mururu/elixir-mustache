@@ -127,7 +127,7 @@ defmodule Mustache.Tokenizer do
     end
   end
 
-   defp tokenize('\r\n' ++ t, current_line, line, buffer, acc) do
+  defp tokenize('\r\n' ++ t, current_line, line, buffer, acc) do
     tokenize(t, current_line, line + 1, [?\n,?\r|buffer], acc)
   end
 
