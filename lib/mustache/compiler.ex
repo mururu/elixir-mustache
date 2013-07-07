@@ -341,16 +341,6 @@ defmodule Mustache.Compiler do
   end
   def to_binary(other), do: Kernel.to_binary(other)
 
-  def recur_access(term, []), do: term
-  def recur_access(term, [atom|t]) do
-    if is_keyword?(term), do: recur_access(term[atom], t), else: []
-  end
-
-  def recur_access_for_dotted(term, []), do: term
-  def recur_access_for_dotted(term, [atom|t]) do
-    if is_keyword?(term), do: recur_access(term[atom], t), else: []
-  end
-
   defp split_float(bin) do
     binary_to_list(bin)
     |> :lists.reverse
@@ -371,6 +361,16 @@ defmodule Mustache.Compiler do
 
   defp split_float([h|t], i, acc) do
     split_float(t, i + 1, [h|acc])
+  end
+
+  def recur_access(term, []), do: term
+  def recur_access(term, [atom|t]) do
+    if is_keyword?(term), do: recur_access(term[atom], t), else: []
+  end
+
+  def recur_access_for_dotted(term, []), do: term
+  def recur_access_for_dotted(term, [atom|t]) do
+    if is_keyword?(term), do: recur_access(term[atom], t), else: []
   end
 
   def escape_html(str) do
