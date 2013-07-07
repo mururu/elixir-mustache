@@ -26,6 +26,20 @@ defmodule Mustache.Tokenizer do
   ## private
 
   # tokenize
+  defp tokenize('{{{' ++ t, current_line, line, buffer, acc) do
+    acc = tokenize_text(current_line, buffer, acc)
+    { var, new_line, rest, _ } = tokenize_variable_for_triple(t, line, [])
+
+    cond do
+      var == :. ->
+        tokenize(rest, new_line, new_line, [], [{ :unescaped_dot, line, var } | acc])
+      to_binary(var) =~ %r/^\w+(\.\w+)+$/ ->
+        atoms = to_binary(var) |> String.split(".") |> Enum.map(binary_to_atom(&1))
+        tokenize(rest, new_line, new_line, [], [{ :unescaped_dotted_name, line, atoms } | acc])
+      true ->
+        tokenize(rest, new_line, new_line, [], [{ :unescaped_variable, line, var } | acc])
+    end
+  end
 
   defp tokenize('{{!' ++ t, current_line, line, buffer, acc) do
     ignore_break_flg = ignore_break?(buffer, acc)
@@ -210,6 +224,55 @@ defmodule Mustache.Tokenizer do
   defp tokenize_variable([], line, _buffer, _ignore_break_flg, _finish_flg) do
     raise SyntaxError, line: line, description: "Unclosed tag"
   end
+
+  # same with tokenize_variable
+  defp tokenize_variable_for_triple(list, line, buffer, ignore_break_flg // false, finish_flg // false)
+
+  defp tokenize_variable_for_triple('}}}' ++ _, line, [], _ignore_break_flg, _finish_flg) do
+    raise SyntaxError, line: line, description: "No contents in tag"
+  end
+
+  defp tokenize_variable_for_triple('}}}\r\n' ++ t, line, buffer, true, _finish_flg) do
+    { buffer |> Enum.reverse |> list_to_atom, line, t, true }
+  end
+
+  defp tokenize_variable_for_triple('}}}\n' ++ t, line, buffer, true, _finish_flg) do
+    { buffer |> Enum.reverse |> list_to_atom, line, t, true }
+  end
+
+  defp tokenize_variable_for_triple('}}}', line, buffer, true, _finish_flg) do
+    { buffer |> Enum.reverse |> list_to_atom, line, '', true }
+  end
+
+  defp tokenize_variable_for_triple('}}}' ++ t, line, buffer, _ignore_break_flg, _finish_flg) do
+    { buffer |> Enum.reverse |> list_to_atom, line, t, false }
+  end
+
+  defp tokenize_variable_for_triple(' ' ++ t, line, [], ignore_break_flg, finish_flg) do
+    tokenize_variable_for_triple(t, line, [], ignore_break_flg, finish_flg)
+  end
+
+  defp tokenize_variable_for_triple(' ' ++ t, line, buffer, ignore_break_flg, _finish_flg) do
+    tokenize_variable_for_triple(t, line, buffer, ignore_break_flg, true)
+  end
+
+  defp tokenize_variable_for_triple([_h|_], line, _buffer, _ignore_break_flg, true) do
+    raise SyntaxError, line: line, description: "Illegal content in tag #{inspect(" ")}"
+  end
+
+  defp tokenize_variable_for_triple([h|t], line, buffer, ignore_break_flg, finish_flg) when h in ?a..?z or h in ?A..?Z or h in ?0..?9 or h in [?_, ?-, ?/, ?!, ??, ?.] do
+    tokenize_variable_for_triple(t, line, [h|buffer], ignore_break_flg, finish_flg)
+  end
+
+  defp tokenize_variable_for_triple([h|_], line, _buffer, _ignore_break_flg, _finish_flg) do
+    raise SyntaxError, line: line, description: "Illegal content in tag #{inspect(<<h>>)}"
+  end
+
+  defp tokenize_variable_for_triple([], line, _buffer, _ignore_break_flg, _finish_flg) do
+    raise SyntaxError, line: line, description: "Unclosed tag"
+  end
+
+
 
   # tokenize text
 
