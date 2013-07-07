@@ -28,15 +28,15 @@ defmodule Mustache.Tokenizer do
 
   defp tokenize('{{!' ++ t, current_line, line, buffer, acc) do
     ignore_break_flg = ignore_break?(buffer, acc)
-    acc = tokenize_text(current_line, buffer, acc)
-    { rest, new_line } = tokenize_comment(t, line, ignore_break_flg)
+    { rest, new_line, ignore_tail_whitespace_flg } = tokenize_comment(t, line, ignore_break_flg)
+    acc = tokenize_text(current_line, buffer, acc, ignore_tail_whitespace_flg)
 
     tokenize(rest, current_line, new_line, [], acc)
   end
 
   defp tokenize('{{&' ++ t, current_line, line, buffer, acc) do
     acc = tokenize_text(current_line, buffer, acc)
-    { var, new_line, rest } = tokenize_variable(t, line, [])
+    { var, new_line, rest, _ } = tokenize_variable(t, line, [])
 
     cond do
       var == :. ->
@@ -51,8 +51,8 @@ defmodule Mustache.Tokenizer do
 
   defp tokenize('{{#' ++ t, current_line, line, buffer, acc) do
     ignore_break_flg = ignore_break?(buffer, acc)
-    acc = tokenize_text(current_line, buffer, acc)
-    { var, new_line, rest } = tokenize_variable(t, line, [], ignore_break_flg)
+    { var, new_line, rest, ignore_tail_whitespace_flg } = tokenize_variable(t, line, [], ignore_break_flg)
+    acc = tokenize_text(current_line, buffer, acc, ignore_tail_whitespace_flg)
 
     if to_binary(var) =~ %r/^\w+(\.\w+)+$/ do
       atoms = to_binary(var) |> String.split(".") |> Enum.map(binary_to_atom(&1))
@@ -64,8 +64,8 @@ defmodule Mustache.Tokenizer do
 
   defp tokenize('{{^' ++ t, current_line, line, buffer, acc) do
     ignore_break_flg = ignore_break?(buffer, acc)
-    acc = tokenize_text(current_line, buffer, acc)
-    { var, new_line, rest } = tokenize_variable(t, line, [], ignore_break_flg)
+    { var, new_line, rest, ignore_tail_whitespace_flg } = tokenize_variable(t, line, [], ignore_break_flg)
+    acc = tokenize_text(current_line, buffer, acc, ignore_tail_whitespace_flg)
 
     if to_binary(var) =~ %r/^\w+(\.\w+)+$/ do
       atoms = to_binary(var) |> String.split(".") |> Enum.map(binary_to_atom(&1))
@@ -77,8 +77,8 @@ defmodule Mustache.Tokenizer do
 
   defp tokenize('{{/' ++ t, current_line, line, buffer, acc) do
     ignore_break_flg = ignore_break?(buffer, acc)
-    acc = tokenize_text(current_line, buffer, acc)
-    { var, new_line, rest } = tokenize_variable(t, line, [], ignore_break_flg)
+    { var, new_line, rest, ignore_tail_whitespace_flg } = tokenize_variable(t, line, [], ignore_break_flg)
+    acc = tokenize_text(current_line, buffer, acc, ignore_tail_whitespace_flg)
 
     if to_binary(var) =~ %r/^\w+(\.\w+)+$/ do
       atoms = to_binary(var) |> String.split(".") |> Enum.map(binary_to_atom(&1))
@@ -90,7 +90,7 @@ defmodule Mustache.Tokenizer do
 
   defp tokenize('{{' ++ t, current_line, line, buffer, acc) do
     acc = tokenize_text(current_line, buffer, acc)
-    { var, new_line, rest } = tokenize_variable(t, line, [])
+    { var, new_line, rest, _ } = tokenize_variable(t, line, [])
 
     cond do
       var == :. ->
@@ -101,6 +101,10 @@ defmodule Mustache.Tokenizer do
       true ->
         tokenize(rest, new_line, new_line, [], [{ :variable, line, var } | acc])
     end
+  end
+
+  defp tokenize('\r\n' ++ t, current_line, line, buffer, acc) do
+    tokenize(t, current_line, line + 1, [?\n,?\r|buffer], acc)
   end
 
   defp tokenize('\n' ++ t, current_line, line, buffer, acc) do
@@ -117,12 +121,24 @@ defmodule Mustache.Tokenizer do
 
   # tokenize comment
 
+  defp tokenize_comment('}}\r\n' ++ t, line, true) do
+    { t, line, true }
+  end
+
   defp tokenize_comment('}}\n' ++ t, line, true) do
-    { t, line }
+    { t, line, true }
+  end
+
+  defp tokenize_comment('}}', line, true) do
+    { '', line, true }
   end
 
   defp tokenize_comment('}}' ++ t, line, _ignore_break_flg) do
-    { t, line }
+    { t, line, false }
+  end
+
+  defp tokenize_comment([?\r,?\n|t], line, ignore_break_flg) do
+    tokenize_comment(t, line + 1, ignore_break_flg)
   end
 
   defp tokenize_comment([?\n|t], line, ignore_break_flg) do
@@ -145,12 +161,20 @@ defmodule Mustache.Tokenizer do
     raise SyntaxError, line: line, description: "No contents in tag"
   end
 
+  defp tokenize_variable('}}\r\n' ++ t, line, buffer, true, _finish_flg) do
+    { buffer |> Enum.reverse |> list_to_atom, line, t, true }
+  end
+
   defp tokenize_variable('}}\n' ++ t, line, buffer, true, _finish_flg) do
-    { buffer |> Enum.reverse |> list_to_atom, line, t }
+    { buffer |> Enum.reverse |> list_to_atom, line, t, true }
+  end
+
+  defp tokenize_variable('}}', line, buffer, true, _finish_flg) do
+    { buffer |> Enum.reverse |> list_to_atom, line, '', true }
   end
 
   defp tokenize_variable('}}' ++ t, line, buffer, _ignore_break_flg, _finish_flg) do
-    { buffer |> Enum.reverse |> list_to_atom, line, t }
+    { buffer |> Enum.reverse |> list_to_atom, line, t, false }
   end
 
   defp tokenize_variable(' ' ++ t, line, [], ignore_break_flg, finish_flg) do
@@ -179,12 +203,21 @@ defmodule Mustache.Tokenizer do
 
   # tokenize text
 
-  defp tokenize_text(line, buffer, acc) do
+  # last argument is flag whether tail whitespaces should be ignored
+  defp tokenize_text(line, buffer, acc, ignore_tail_whitespaces_flg // false)
+
+  defp tokenize_text(line, buffer, acc, true) do
+    [{ :text, line, String.rstrip(:unicode.characters_to_binary(Enum.reverse(buffer)), ? ) } | acc]
+  end
+
+  defp tokenize_text(line, buffer, acc, false) do
     [{ :text, line, :unicode.characters_to_binary(Enum.reverse(buffer)) } | acc]
   end
 
   # ignore flg
 
+  defp ignore_break?([? |t], acc), do: ignore_break?(t,acc)
+  defp ignore_break?([?\n,?\r|_], _), do: true
   defp ignore_break?([?\n|_], _), do: true
   defp ignore_break?([], []), do: true
   defp ignore_break?(_, _), do: false
