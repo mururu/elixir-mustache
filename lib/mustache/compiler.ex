@@ -204,7 +204,7 @@ defmodule Mustache.Compiler do
       buffer = unquote(buffer)
       adding = Mustache.Compiler.recur_access(unquote(var), unquote(atoms))
         |> Mustache.Compiler.to_binary
-        |> Mustache.Compiler.html_escape
+        |> Mustache.Compiler.escape_html
       buffer <> adding
     end
   end
