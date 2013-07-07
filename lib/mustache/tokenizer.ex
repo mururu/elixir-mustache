@@ -51,6 +51,7 @@ defmodule Mustache.Tokenizer do
           [?/|t] -> tokenize_slash(t, tags, current_line, line, buffer, acc)
           [?>|t] -> tokenize_gt(t, tags, current_line, line, buffer, acc)
           [?&|t] -> tokenize_and(t, tags, current_line, line, buffer, acc)
+          [?=|t] -> tokenize_equal(t, tags, current_line, line, buffer, acc)
           t -> tokenize_simple(t, tags, current_line, line, buffer, acc)
         end
       _ ->
@@ -180,6 +181,14 @@ defmodule Mustache.Tokenizer do
     end
   end
 
+  defp tokenize_equal(t, { _, ctag }, current_line, line, buffer, acc) do
+    ignore_break_flg = ignore_break?(buffer, acc)
+    { new_tags, new_line, rest, ignore_tail_whitespace_flg } = tokenize_new_tag(t, [?=|ctag], line, ignore_break_flg)
+    acc = tokenize_text(current_line, buffer, acc, ignore_tail_whitespace_flg)
+
+    tokenize(rest, new_tags, new_line, new_line, [], acc)
+  end
+
   # tokenize comment
 
   defp tokenize_comment([?\r,?\n|t], ctag, line, ignore_break_flg) do
@@ -248,6 +257,61 @@ defmodule Mustache.Tokenizer do
             tokenize_variable(t, ctag, line, [h|buffer], ignore_break_flg, finish_flg)
           [h|_] ->
             raise SyntaxError, line: line, description: "Illegal content in tag #{inspect(<<h>>)}"
+        end
+    end
+  end
+
+  defp tokenize_new_tag(string, ctag, line, ignore_break_flg) do
+    string = strip_space(string)
+
+    { new_otag, rest } = tokenize_new_otag(string, [])
+    { new_ctag, rest, ignore_tail_whitespace_flg } = tokenize_new_ctag(rest, ctag, [], ignore_break_flg)
+
+    { { new_otag, new_ctag }, line, rest, ignore_tail_whitespace_flg }
+  end
+
+  def strip_psace([]), do: raise(SyntaxError, description: "Unclosed tag")
+  def strip_space([? |t]), do: t
+  def strip_space(string), do: string
+
+  defp tokenize_new_otag(string, buffer, finish_flg // false)
+
+  defp tokenize_new_otag('', _, _) do
+    raise SyntaxError, description: "Unclosed tag"
+  end
+
+  defp tokenize_new_otag([? |t], buffer, _finish_flg) do
+    tokenize_new_otag(t, buffer, true)
+  end
+
+  defp tokenize_new_otag([h|t], buffer, false) do
+    tokenize_new_otag(t, [h|buffer], false)
+  end
+
+  defp tokenize_new_otag(rest, buffer, true) do
+    { :lists.reverse(buffer), rest }
+  end
+
+  def tokenize_new_ctag(string, ctag, buffer, ignore_break_flg) do
+    case strip_tag(string, ctag) do
+      { :ok, rest } ->
+        case rest do
+          [?\r,?\n|t] when ignore_break_flg ->
+            { :lists.reverse(buffer), t, true }
+          [?\n|t] when ignore_break_flg ->
+            { :lists.reverse(buffer), t, true }
+          [] when ignore_break_flg ->
+            { :lists.reverse(buffer), '', true }
+          t ->
+            { :lists.reverse(buffer), t, false }
+        end
+      _ ->
+        case string do
+          [] -> raise SyntaxError, description: "Unclosed tag"
+          [? |t] ->
+            tokenize_new_ctag(t, ctag, buffer, ignore_break_flg)
+          [h|t] ->
+            tokenize_new_ctag(t, ctag, [h|buffer], ignore_break_flg)
         end
     end
   end
