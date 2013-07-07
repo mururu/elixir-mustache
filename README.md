@@ -19,6 +19,5 @@ Mustache.render("Hello, {{planet}}", [planet: "World!"])
 * Improve error message
 * More tests
 * Various API
-* Support partials
-* Support changing delimiter
+* Support recursive partials
 * Speed improvements
