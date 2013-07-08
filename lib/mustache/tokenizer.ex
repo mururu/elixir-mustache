@@ -254,7 +254,7 @@ defmodule Mustache.Tokenizer do
     { { new_otag, new_ctag }, line, rest, ignore_tail_whitespace_flg }
   end
 
-  defp strip_psace([]), do: raise(SyntaxError, description: "Unclosed tag")
+  defp strip_space([]), do: raise(SyntaxError, description: "Unclosed tag")
   defp strip_space([? |t]), do: t
   defp strip_space(string), do: string
 
