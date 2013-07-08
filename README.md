@@ -14,10 +14,3 @@ Mustache.render("Hello, {{planet}}", [planet: "World!"])
 ## Links
 
 * [mustache(5) -- Logic-less templates.](http://mustache.github.io/mustache.5.html)
-
-## TODO
-* Improve error message
-* More tests
-* Various API
-* Support recursive partials
-* Speed improvements
