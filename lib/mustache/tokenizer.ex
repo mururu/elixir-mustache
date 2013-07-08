@@ -60,25 +60,7 @@ defmodule Mustache.Tokenizer do
     end
   end
 
-  #strip_tag
-
-  def strip_tag(rest, '') do
-    { :ok, rest }
-  end
-
-  def strip_tag('', _) do
-    nil
-  end
-
-  def strip_tag([h|t1], [h|t2]) do
-    strip_tag(t1, t2)
-  end
-
-  def strip_tag(_, _) do
-    nil
-  end
-
-  # extract kind
+  # tokenize inside of tags
 
   defp tokenize_mustache(t, { _, ctag } = tags, current_line, line, buffer, acc) do
     acc = tokenize_text(current_line, buffer, acc)
@@ -261,6 +243,8 @@ defmodule Mustache.Tokenizer do
     end
   end
 
+  # tokenize new tag
+
   defp tokenize_new_tag(string, ctag, line, ignore_break_flg) do
     string = strip_space(string)
 
@@ -270,9 +254,9 @@ defmodule Mustache.Tokenizer do
     { { new_otag, new_ctag }, line, rest, ignore_tail_whitespace_flg }
   end
 
-  def strip_psace([]), do: raise(SyntaxError, description: "Unclosed tag")
-  def strip_space([? |t]), do: t
-  def strip_space(string), do: string
+  defp strip_psace([]), do: raise(SyntaxError, description: "Unclosed tag")
+  defp strip_space([? |t]), do: t
+  defp strip_space(string), do: string
 
   defp tokenize_new_otag(string, buffer, finish_flg // false)
 
@@ -292,7 +276,7 @@ defmodule Mustache.Tokenizer do
     { :lists.reverse(buffer), rest }
   end
 
-  def tokenize_new_ctag(string, ctag, buffer, ignore_break_flg) do
+  defp tokenize_new_ctag(string, ctag, buffer, ignore_break_flg) do
     case strip_tag(string, ctag) do
       { :ok, rest } ->
         case rest do
@@ -336,4 +320,24 @@ defmodule Mustache.Tokenizer do
   defp ignore_break?([?\n|_], _), do: true
   defp ignore_break?([], []), do: true
   defp ignore_break?(_, _), do: false
+
+  # strip tag
+
+  defp strip_tag(rest, '') do
+    { :ok, rest }
+  end
+
+  defp strip_tag('', _) do
+    nil
+  end
+
+  defp strip_tag([h|t1], [h|t2]) do
+    strip_tag(t1, t2)
+  end
+
+  defp strip_tag(_, _) do
+    nil
+  end
+
+
 end
