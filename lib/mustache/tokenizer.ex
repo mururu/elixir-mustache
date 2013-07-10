@@ -20,7 +20,9 @@ defmodule Mustache.Tokenizer do
   end
 
   def tokenize(list, line) when is_list(list) do
-    Enum.reverse(tokenize(list, { '{{', '}}' }, line, line, [], []))
+    tokenize(list, { '{{', '}}' }, line, line, [], [])
+    |> Enum.reverse
+    |> Enum.reject(&1 == :line_break)
   end
 
   ## private
@@ -80,9 +82,12 @@ defmodule Mustache.Tokenizer do
   defp tokenize_bang(t, { _, ctag } = tags, current_line, line, buffer, acc) do
     ignore_break_flg = ignore_break?(buffer, acc)
     { rest, new_line, ignore_tail_whitespace_flg } = tokenize_comment(t, ctag, line, ignore_break_flg)
+    line_break_flg = ignore_tail_whitespace_flg || head_is_line_break?(acc)
     acc = tokenize_text(current_line, buffer, acc, ignore_tail_whitespace_flg)
 
-    tokenize(rest, tags, current_line, new_line, [], acc)
+    maybe_line_break = if line_break_flg, do: [:line_break], else: []
+
+    tokenize(rest, tags, current_line, new_line, [], maybe_line_break ++ acc)
   end
 
   defp tokenize_and(t, { _, ctag } = tags, current_line, line, buffer, acc) do
@@ -103,48 +108,60 @@ defmodule Mustache.Tokenizer do
   defp tokenize_hash(t, { _, ctag } = tags, current_line, line, buffer, acc) do
     ignore_break_flg = ignore_break?(buffer, acc)
     { var, new_line, rest, ignore_tail_whitespace_flg } = tokenize_variable(t, ctag, line, [], ignore_break_flg)
+    line_break_flg = ignore_tail_whitespace_flg || head_is_line_break?(acc)
     acc = tokenize_text(current_line, buffer, acc, ignore_tail_whitespace_flg)
+
+    maybe_line_break = if line_break_flg, do: [:line_break], else: []
 
     if to_binary(var) =~ %r/^\w+(\.\w+)+$/ do
       atoms = to_binary(var) |> String.split(".") |> Enum.map(binary_to_atom(&1))
-      tokenize(rest, tags, new_line, new_line, [], [{ :dotted_name_section, line, atoms } | acc])
+      tokenize(rest, tags, new_line, new_line, [], maybe_line_break ++ [{ :dotted_name_section, line, atoms } | acc])
     else
-      tokenize(rest, tags, new_line, new_line, [], [{ :section, line, var } | acc])
+      tokenize(rest, tags, new_line, new_line, [], maybe_line_break ++ [{ :section, line, var } | acc])
     end
   end
 
   defp tokenize_hat(t, { _, ctag } = tags, current_line, line, buffer, acc) do
     ignore_break_flg = ignore_break?(buffer, acc)
     { var, new_line, rest, ignore_tail_whitespace_flg } = tokenize_variable(t, ctag, line, [], ignore_break_flg)
+    line_break_flg = ignore_tail_whitespace_flg || head_is_line_break?(acc)
     acc = tokenize_text(current_line, buffer, acc, ignore_tail_whitespace_flg)
+
+    maybe_line_break = if line_break_flg, do: [:line_break], else: []
 
     if to_binary(var) =~ %r/^\w+(\.\w+)+$/ do
       atoms = to_binary(var) |> String.split(".") |> Enum.map(binary_to_atom(&1))
-      tokenize(rest, tags, new_line, new_line, [], [{ :dotted_name_inverted_section, line, atoms } | acc])
+      tokenize(rest, tags, new_line, new_line, [], maybe_line_break ++ [{ :dotted_name_inverted_section, line, atoms } | acc])
     else
-      tokenize(rest, tags, new_line, new_line, [], [{ :inverted_section, line, var } | acc])
+      tokenize(rest, tags, new_line, new_line, [], maybe_line_break ++ [{ :inverted_section, line, var } | acc])
     end
   end
 
   defp tokenize_slash(t, { _, ctag } = tags, current_line, line, buffer, acc) do
     ignore_break_flg = ignore_break?(buffer, acc)
     { var, new_line, rest, ignore_tail_whitespace_flg } = tokenize_variable(t, ctag, line, [], ignore_break_flg)
+    line_break_flg = ignore_tail_whitespace_flg || head_is_line_break?(acc)
     acc = tokenize_text(current_line, buffer, acc, ignore_tail_whitespace_flg)
+
+    maybe_line_break = if line_break_flg, do: [:line_break], else: []
 
     if to_binary(var) =~ %r/^\w+(\.\w+)+$/ do
       atoms = to_binary(var) |> String.split(".") |> Enum.map(binary_to_atom(&1))
-      tokenize(rest, tags, new_line, new_line, [], [{ :end_section, line, atoms } | acc])
+      tokenize(rest, tags, new_line, new_line, [], maybe_line_break ++ [{ :end_section, line, atoms } | acc])
     else
-      tokenize(rest, tags, new_line, new_line, [], [{ :end_section, line, var } | acc])
+      tokenize(rest, tags, new_line, new_line, [], maybe_line_break ++ [{ :end_section, line, var } | acc])
     end
   end
 
  defp tokenize_gt(t, { _, ctag } = tags, current_line, line, buffer, acc) do
     ignore_break_flg = ignore_break?(buffer, acc)
     { var, new_line, rest, ignore_tail_whitespace_flg } = tokenize_variable(t, ctag, line, [], ignore_break_flg)
+    line_break_flg = ignore_tail_whitespace_flg || head_is_line_break?(acc)
     acc = tokenize_text(current_line, buffer, acc, ignore_tail_whitespace_flg)
 
-    tokenize(rest, tags, new_line, new_line, [], [{ :partial, line, var } | acc])
+    maybe_line_break = if line_break_flg, do: [:line_break], else: []
+
+    tokenize(rest, tags, new_line, new_line, [], maybe_line_break ++ [{ :partial, line, var } | acc])
   end
 
 
@@ -166,9 +183,12 @@ defmodule Mustache.Tokenizer do
   defp tokenize_equal(t, { _, ctag }, current_line, line, buffer, acc) do
     ignore_break_flg = ignore_break?(buffer, acc)
     { new_tags, new_line, rest, ignore_tail_whitespace_flg } = tokenize_new_tag(t, [?=|ctag], line, ignore_break_flg)
+    line_break_flg = ignore_tail_whitespace_flg || head_is_line_break?(acc)
     acc = tokenize_text(current_line, buffer, acc, ignore_tail_whitespace_flg)
 
-    tokenize(rest, new_tags, new_line, new_line, [], acc)
+    maybe_line_break = if line_break_flg, do: [:line_break], else: []
+
+    tokenize(rest, new_tags, new_line, new_line, [], maybe_line_break ++ acc)
   end
 
   # tokenize comment
@@ -306,7 +326,7 @@ defmodule Mustache.Tokenizer do
   defp tokenize_text(line, buffer, acc, ignore_tail_whitespaces_flg // false)
 
   defp tokenize_text(line, buffer, acc, true) do
-    [{ :text, line, String.rstrip(:unicode.characters_to_binary(Enum.reverse(buffer)), ? ) } | acc]
+    [ { :text, line, String.rstrip(:unicode.characters_to_binary(Enum.reverse(buffer)), ? ) } | acc]
   end
 
   defp tokenize_text(line, buffer, acc, false) do
@@ -318,6 +338,7 @@ defmodule Mustache.Tokenizer do
   defp ignore_break?([? |t], acc), do: ignore_break?(t,acc)
   defp ignore_break?([?\n,?\r|_], _), do: true
   defp ignore_break?([?\n|_], _), do: true
+  defp ignore_break?([], [:line_break|_]), do: true
   defp ignore_break?([], []), do: true
   defp ignore_break?(_, _), do: false
 
@@ -339,5 +360,6 @@ defmodule Mustache.Tokenizer do
     nil
   end
 
-
+  defp head_is_line_break?([:line_break|_]), do: true
+  defp head_is_line_break?(_), do: false
 end
