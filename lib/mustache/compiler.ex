@@ -47,7 +47,7 @@ defmodule Mustache.Compiler do
 
     buffer = handle_text(buffer, new_buffer)
 
-    generate_buffer(rest, buffer, [atom|vars], partials, parent, root_parent, dot_flg)
+    generate_buffer(rest, buffer, inner_vars ++ [atom|vars], partials, parent, root_parent, dot_flg)
   end
 
   defp generate_buffer([{ :inverted_section, _line, atom } | t], buffer, vars, partials, parent, root_parent, dot_flg) do
@@ -68,7 +68,7 @@ defmodule Mustache.Compiler do
 
     buffer = handle_text(buffer, new_buffer)
 
-    generate_buffer(rest, buffer, [atom|vars], partials, parent, root_parent, dot_flg)
+    generate_buffer(rest, buffer, inner_vars ++ [atom|vars], partials, parent, root_parent, dot_flg)
   end
 
   defp generate_buffer([{ :end_section, _line, parent } | t], buffer, vars, _partials, parent, _root_parent, dot_flg) do
@@ -136,7 +136,7 @@ defmodule Mustache.Compiler do
 
     buffer = handle_text(buffer, new_buffer)
 
-    generate_buffer(rest, buffer, [atom|vars], partials, parent, root_parent, dot_flg)
+    generate_buffer(rest, buffer, inner_vars ++ [atom|vars], partials, parent, root_parent, dot_flg)
   end
 
   defp generate_buffer([{ :dotted_name_inverted_section, _line, [atom|atoms] } | t], buffer, vars, partials, parent, root_parent, dot_flg) do
@@ -157,7 +157,7 @@ defmodule Mustache.Compiler do
 
     buffer = handle_text(buffer, new_buffer)
 
-    generate_buffer(rest, buffer, [atom|vars], partials, parent, root_parent, dot_flg)
+    generate_buffer(rest, buffer, inner_vars ++ [atom|vars], partials, parent, root_parent, dot_flg)
   end
 
   defp generate_buffer([{ :partial, _line, atom } | t], buffer, vars, partials, parent, root_parent, dot_flg) do
@@ -217,7 +217,7 @@ defmodule Mustache.Compiler do
       var = unquote(var)
       vars = unquote(vars)
       fun = unquote(fun)
-      coll = Mustache.Compiler.to_coll(var, vars)
+      coll = Mustache.Compiler.to_coll(var, vars, binding)
       Enum.map(coll, fun) |> Enum.join
     end
   end
@@ -230,9 +230,9 @@ defmodule Mustache.Compiler do
       var = unquote(var)
       vars = unquote(vars)
       fun = unquote(fun)
-      coll = Mustache.Compiler.to_coll(var, vars)
+      coll = Mustache.Compiler.to_coll(var, vars, binding)
       case coll do
-        [] -> fun.(Mustache.Compiler.to_nilcoll(vars))
+        [] -> fun.(Mustache.Compiler.to_nilcoll(vars, binding))
         _  -> ""
       end
     end
@@ -263,7 +263,7 @@ defmodule Mustache.Compiler do
       var = Mustache.Compiler.recur_access_for_dotted(unquote(top_var), unquote(atoms))
       vars = unquote(vars)
       fun = unquote(fun)
-      coll = Mustache.Compiler.to_coll(var, vars)
+      coll = Mustache.Compiler.to_coll(var, vars, binding)
       Enum.map(coll, fun) |> Enum.join
     end
   end
@@ -277,9 +277,9 @@ defmodule Mustache.Compiler do
       var = Mustache.Compiler.recur_access_for_dotted(unquote(top_var), unquote(atoms))
       vars = unquote(vars)
       fun = unquote(fun)
-      coll = Mustache.Compiler.to_coll(var, vars)
+      coll = Mustache.Compiler.to_coll(var, vars, binding)
       case coll do
-        [] -> fun.(Mustache.Compiler.to_nilcoll(vars))
+        [] -> fun.(Mustache.Compiler.to_nilcoll(vars, binding))
         _  -> ""
       end
     end
@@ -303,27 +303,27 @@ defmodule Mustache.Compiler do
 
   # utils
 
-  def to_coll(term, vars) when is_list(term) do
+  def to_coll(term, vars, bind) when is_list(term) do
     cond do
       term == [] ->
         []
       is_keyword?(term) ->
-       [Enum.map(vars, fn(x) -> term[x] end)]
+       [Enum.map(vars, fn(x) -> term[x] || bind[x] end)]
       true ->
         Enum.map term, fn(elem) ->
           if is_keyword?(elem) do
-            Enum.map(vars, fn(x) -> elem[x] end)
+            Enum.map(vars, fn(x) -> elem[x] || bind[x] end)
           else
-            to_nilcoll(vars)
+            to_nilcoll(vars, bind)
           end
         end
     end
   end
 
-  def to_coll(term, _vars) when term == nil or term == false, do: []
-  def to_coll(_term, vars), do: [to_nilcoll(vars)]
+  def to_coll(term, _vars, _bind) when term == nil or term == false, do: []
+  def to_coll(_term, vars, bind), do: [to_nilcoll(vars, bind)]
 
-  def to_nilcoll(vars), do: List.duplicate(nil, length(vars))
+  def to_nilcoll(vars, bind), do: Enum.map(vars, bind[&1])
 
   defp is_keyword?(list) when is_list(list), do: :lists.all(is_keyword_tuple?(&1), list)
   defp is_keyword?(_), do: false
