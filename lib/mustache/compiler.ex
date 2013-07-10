@@ -64,7 +64,7 @@ defmodule Mustache.Compiler do
         end
       else
         handle_inverted_expr(expr, atom, inner_vars)
-  end
+      end
 
     buffer = handle_text(buffer, new_buffer)
 
