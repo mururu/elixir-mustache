@@ -160,12 +160,12 @@ defmodule Mustache.Compiler do
     generate_buffer(rest, buffer, inner_vars ++ [atom|vars], partials, parent, root_parent, dot_flg)
   end
 
-  defp generate_buffer([{ :partial, _line, atom } | t], buffer, vars, partials, parent, root_parent, dot_flg) do
+  defp generate_buffer([{ :partial, _line, atom, _index } | t], buffer, vars, partials, parent, root_parent, dot_flg) do
     partial = partials[atom] || []
 
     Enum.each partial, fn(token) ->
       case token do
-        { :partial, _, ^atom } -> raise SyntaxError, description: "Recursive partials is not supported"
+        { :partial, _, ^atom, _ } -> raise SyntaxError, description: "Recursive partials is not supported"
         _ -> :ok
       end
     end

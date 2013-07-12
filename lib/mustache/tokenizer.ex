@@ -1,19 +1,19 @@
 defmodule Mustache.Tokenizer do
 
   @doc """
-  { :text,  line, contents :: binary }
-  { :unescaped_variable,   line, contents :: atom }
+  { :text, line, contents :: binary }
+  { :unescaped_variable, line, contents :: atom }
   { :section,  line, contents :: atom }
-  { :inverted_section,   line, contents :: atom }
+  { :inverted_section, line, contents :: atom }
   { :end_section, line, contents :: atom }
-  { :variable,   line, contents :: atom }
+  { :variable, line, contents :: atom }
   { :dot, line, contents :: atom}
   { :unescaped_dot, line, contents :: atom }
   { :dotted_name, line, contents :: [atom..] }
   { :unescaped_dotted_name, line, contents :: [atom..] }
   { :dotted_name_section, line, contents :: [atom..] }
   { :dotted_name_inverted_section, line, contents :: [atom..] }
-  { :partial, line, contents :: contents :: atom }
+  { :partial, line, contents :: atom, indent :: integer }
   """
   def tokenize(bin, line) when is_binary(bin) do
     tokenize(:unicode.characters_to_list(bin), line)
@@ -157,11 +157,11 @@ defmodule Mustache.Tokenizer do
     ignore_break_flg = ignore_break?(buffer, acc)
     { var, new_line, rest, ignore_tail_whitespace_flg } = tokenize_variable(t, ctag, line, [], ignore_break_flg)
     line_break_flg = ignore_tail_whitespace_flg || head_is_line_break?(acc)
-    acc = tokenize_text(current_line, buffer, acc, ignore_tail_whitespace_flg)
+    { acc, indent } = tokenize_text_and_count_indent(current_line, buffer, acc, ignore_tail_whitespace_flg)
 
     maybe_line_break = if line_break_flg, do: [:line_break], else: []
 
-    tokenize(rest, tags, new_line, new_line, [], maybe_line_break ++ [{ :partial, line, var } | acc])
+    tokenize(rest, tags, new_line, new_line, [], maybe_line_break ++ [{ :partial, line, var, indent } | acc])
   end
 
 
@@ -332,6 +332,21 @@ defmodule Mustache.Tokenizer do
   defp tokenize_text(line, buffer, acc, false) do
     [{ :text, line, :unicode.characters_to_binary(Enum.reverse(buffer)) } | acc]
   end
+
+  defp tokenize_text_and_count_indent(line, buffer, acc, true) do
+    { content, indent } = do_tokenize_text_and_count_indent(buffer, 0)
+    { [ { :text, line, :unicode.characters_to_binary(Enum.reverse(content)) } | acc], indent }
+  end
+
+  defp tokenize_text_and_count_indent(line, buffer, acc, false) do
+    { [{ :text, line, :unicode.characters_to_binary(Enum.reverse(buffer)) } | acc], 0 }
+  end
+
+  defp do_tokenize_text_and_count_indent([? |list], i) do
+    do_tokenize_text_and_count_indent(list, i + 1)
+  end
+
+  defp do_tokenize_text_and_count_indent(list, i), do: { list, i }
 
   # ignore flg
 
