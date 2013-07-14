@@ -1,5 +1,7 @@
 defmodule Mustache.Compiler do
+  @moduledoc false
 
+  @doc false
   def compile(source, options) do
     line = options[:line] || 1
     tokens = Mustache.Tokenizer.tokenize(source, line)

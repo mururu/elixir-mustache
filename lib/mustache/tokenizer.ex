@@ -1,20 +1,20 @@
 defmodule Mustache.Tokenizer do
+  @moduledoc false
 
-  @doc """
-  { :text, line, contents :: binary }
-  { :unescaped_variable, line, contents :: atom }
-  { :section,  line, contents :: atom }
-  { :inverted_section, line, contents :: atom }
-  { :end_section, line, contents :: atom }
-  { :variable, line, contents :: atom }
-  { :dot, line, contents :: atom}
-  { :unescaped_dot, line, contents :: atom }
-  { :dotted_name, line, contents :: [atom..] }
-  { :unescaped_dotted_name, line, contents :: [atom..] }
-  { :dotted_name_section, line, contents :: [atom..] }
-  { :dotted_name_inverted_section, line, contents :: [atom..] }
-  { :partial, line, contents :: atom, indent :: integer }
-  """
+  #{ :text, line, contents :: binary }
+  #{ :unescaped_variable, line, contents :: atom }
+  #{ :section,  line, contents :: atom }
+  #{ :inverted_section, line, contents :: atom }
+  #{ :end_section, line, contents :: atom }
+  #{ :variable, line, contents :: atom }
+  #{ :dot, line, contents :: atom}
+  #{ :unescaped_dot, line, contents :: atom }
+  #{ :dotted_name, line, contents :: [atom..] }
+  #{ :unescaped_dotted_name, line, contents :: [atom..] }
+  #{ :dotted_name_section, line, contents :: [atom..] }
+  #{ :dotted_name_inverted_section, line, contents :: [atom..] }
+  #{ :partial, line, contents :: atom, indent :: integer }
+  @doc false
   def tokenize(bin, line) when is_binary(bin) do
     tokenize(:unicode.characters_to_list(bin), line)
   end
