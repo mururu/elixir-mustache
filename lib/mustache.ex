@@ -26,6 +26,6 @@ defmodule Mustache do
   end
 
   defp wrap_bindings(bindings) do
-    [mustache: [bindings]]
+    [mustache_root: [bindings]]
   end
 end

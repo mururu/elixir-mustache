@@ -11,7 +11,7 @@ defmodule Mustache.Compiler do
 
     { [], buffer, inner_vars } = generate_buffer(tokens, "", [], partials, :mustache_root, :mustache_root, false)
 
-    handle_expr(buffer, :mustache, inner_vars)
+    handle_expr(buffer, :mustache_root, inner_vars)
   end
 
   ## private
