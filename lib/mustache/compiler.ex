@@ -184,28 +184,42 @@ defmodule Mustache.Compiler do
   end
 
   defp handle_variable(buffer, var) do
-    quote do: unquote(buffer) <> Mustache.Compiler.escape_html(Mustache.Compiler.to_binary(unquote(var)))
+    quote do
+      var = unquote(var)
+
+      if is_function(var, 0), do: var = var.()
+
+      unquote(buffer) <> Mustache.Compiler.escape_html(Mustache.Compiler.to_binary(var))
+    end
   end
 
   defp handle_unescaped_variable(buffer, var) do
-    quote do: unquote(buffer) <> Mustache.Compiler.to_binary(unquote(var))
+    quote do
+      var = unquote(var)
+
+      if is_function(var, 0), do: var = var.()
+
+      unquote(buffer) <> Mustache.Compiler.to_binary(var)
+    end
   end
 
   def handle_dotted_name(buffer, var, atoms) do
     quote do
-      buffer = unquote(buffer)
-      adding = Mustache.Compiler.recur_access(unquote(var), unquote(atoms)) |> Mustache.Compiler.to_binary
-      buffer <> adding
+      var = adding = Mustache.Compiler.recur_access(unquote(var), unquote(atoms))
+
+      if is_function(var, 0), do: var = var.()
+
+      unquote(buffer) <> Mustache.Compiler.escape_html(Mustache.Compiler.to_binary(var))
     end
   end
 
   def handle_unescaped_dotted_name(buffer, var, atoms) do
     quote do
-      buffer = unquote(buffer)
-      adding = Mustache.Compiler.recur_access(unquote(var), unquote(atoms))
-        |> Mustache.Compiler.to_binary
-        |> Mustache.Compiler.escape_html
-      buffer <> adding
+      var = Mustache.Compiler.recur_access(unquote(var), unquote(atoms))
+
+      if is_function(var, 0), do: var = var.()
+
+      unquote(buffer) <> Mustache.Compiler.to_binary(var)
     end
   end
 
