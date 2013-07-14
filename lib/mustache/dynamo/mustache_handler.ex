@@ -27,7 +27,6 @@ if Enum.all? [Dynamo.Templates.Handler, Dynamo.Template], Code.ensure_loaded?(&1
         end
 
         # result
-        <!DOCTYPE HTML>
         <html>
         <head>
           <title>Mustache</title>
