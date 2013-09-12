@@ -39,14 +39,14 @@ defmodule Mustache.Utils do
 
   @doc false
   def to_binary(float) when is_float(float) do
-    bin = round(float * 100000000000000) |> Kernel.to_binary
+    bin = round(float * 100000000000000) |> Kernel.to_string
     { integer, decimal } = split_float(bin)
     Kernel.to_binary([integer, ".", decimal])
   end
-  def to_binary(other), do: Kernel.to_binary(other)
+  def to_binary(other), do: Kernel.to_string(other)
 
   defp split_float(bin) do
-    binary_to_list(bin)
+    String.to_char_list(bin)
     |> :lists.reverse
     |> split_float(0, '')
   end
