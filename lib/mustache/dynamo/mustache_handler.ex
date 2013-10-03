@@ -1,4 +1,4 @@
-if Enum.all? [Dynamo.Templates.Handler, Dynamo.Template], Code.ensure_loaded?(&1) do
+if Enum.all? [Dynamo.Templates.Handler, Dynamo.Template], &Code.ensure_loaded?(&1) do
   defmodule Dynamo.Templates.MUSTACHEHandler do
     @moduledoc """
     Mustache Handler for [Dynamo](https://github.com/elixir-lang/dynamo)

@@ -39,7 +39,7 @@ defmodule Mix.Tasks.Spec.Generate do
     Path.wildcard(Path.join([@spec_path, "spec", "specs", "*.yml"]))
       |> Enum.reject(fn(x) -> Path.basename(x) =~ %r/^~/ end)
       |> filter_by_options(options)
-      |> Enum.map(extract_tests_from_file(&1))
+      |> Enum.map(&extract_tests_from_file(&1))
   end
 
   def extract_tests_from_file(filename) do
@@ -63,7 +63,7 @@ defmodule Mix.Tasks.Spec.Generate do
   end
 
   def to_keyword(data) when is_list(data) do
-    Enum.map(data, to_keyword(&1))
+    Enum.map(data, &to_keyword(&1))
   end
 
   def to_keyword({ key, value }) when is_binary(key) do
