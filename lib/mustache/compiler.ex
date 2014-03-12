@@ -1,7 +1,6 @@
 defmodule Mustache.Compiler do
   @moduledoc false
 
-  @doc false
   def compile(source, options) do
     line = options[:line] || 1
     tokens = Mustache.Tokenizer.tokenize(source, line)
@@ -227,7 +226,7 @@ defmodule Mustache.Compiler do
   defp handle_expr(expr, atom, vars) do
     var = { atom, [], nil }
     real_vars = Enum.map vars, fn(atom) -> { atom, [], nil} end
-    fun = {:fn,[],[{:->,[],[{[real_vars],[],expr}]}]}
+    fun = quote do: fn(unquote(real_vars)) -> unquote(expr) end
     quote do
       var = unquote(var)
       vars = unquote(vars)
@@ -240,7 +239,7 @@ defmodule Mustache.Compiler do
   defp handle_inverted_expr(expr, atom, vars) do
     var = { atom, [], nil }
     real_vars = Enum.map vars, fn(atom) -> { atom, [], nil} end
-    fun = {:fn,[],[{:->,[],[{[real_vars],[],expr}]}]}
+    fun = quote do: fn(unquote(real_vars)) -> unquote(expr) end
     quote do
       var = unquote(var)
       vars = unquote(vars)
@@ -256,7 +255,7 @@ defmodule Mustache.Compiler do
   defp handle_expr_including_dot(expr, atom) do
     var = { atom, [], nil }
     real_vars = [{ :., [], nil}]
-    fun = {:fn,[],[{:->,[],[{[real_vars],[],expr}]}]}
+    fun = quote do: fn(unquote(real_vars)) -> unquote(expr) end
     quote do
       var = unquote(var)
       fun = unquote(fun)
@@ -273,7 +272,7 @@ defmodule Mustache.Compiler do
   defp handle_dotted_expr(expr, atom, atoms, vars) do
     top_var = { atom, [], nil }
     real_vars = Enum.map vars, fn(atom) -> { atom, [], nil} end
-    fun = {:fn,[],[{:->,[],[{[real_vars],[],expr}]}]}
+    fun = quote do: fn(unquote(real_vars)) -> unquote(expr) end
     quote do
       var = Mustache.Utils.recur_access_for_dotted(unquote(top_var), unquote(atoms))
       vars = unquote(vars)
@@ -287,7 +286,7 @@ defmodule Mustache.Compiler do
   defp handle_dotted_inverted_expr(expr, atom, atoms, vars) do
     top_var = { atom, [], nil }
     real_vars = Enum.map vars, fn(atom) -> { atom, [], nil} end
-    fun = {:fn,[],[{:->,[],[{[real_vars],[],expr}]}]}
+    fun = quote do: fn(unquote(real_vars)) -> unquote(expr) end
     quote do
       var = Mustache.Utils.recur_access_for_dotted(unquote(top_var), unquote(atoms))
       vars = unquote(vars)
@@ -303,7 +302,7 @@ defmodule Mustache.Compiler do
   defp handle_dotted_expr_including_dot(expr, atom, atoms) do
     top_var = { atom, [], nil }
     real_vars = [{ :., [], nil}]
-    fun = {:fn,[],[{:->,[],[{[real_vars],[],expr}]}]}
+    fun = quote do: fn(unquote(real_vars)) -> unquote(expr) end
     quote do
       var = Mustache.Utils.recur_access_for_dotted(unquote(top_var), unquote(atoms))
       fun = unquote(fun)

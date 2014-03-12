@@ -14,7 +14,7 @@ defmodule Mustache do
       #=> "Hello, Mustache!"
 
   """
-  def render(source, bindings // [], options // []) do
+  def render(source, bindings \\ [], options \\ []) do
     render_string(source, bindings, options)
   end
 
@@ -27,7 +27,7 @@ defmodule Mustache do
       #=> "Hello, Mustache!"
 
   """
-  def render_string(source, bindings // [], options // []) do
+  def render_string(source, bindings \\ [], options \\ []) do
     compiled = compile_string(source, options)
     do_eval(compiled, bindings, options)
   end
@@ -45,14 +45,14 @@ defmodule Mustache do
       #=> "Hello, Mustache!"
 
   """
-  def render_file(filename, bindings // [], options // []) do
+  def render_file(filename, bindings \\ [], options \\ []) do
     render_string(File.read!(filename), bindings, options)
   end
 
   @doc """
   Get a quoted expression as a `template` and evaluate the values using the `bindings`.
   """
-  def render_compiled_template(template, bindings, options // []) do
+  def render_compiled_template(template, bindings, options \\ []) do
     do_eval(template, bindings, options)
   end
 
@@ -60,21 +60,21 @@ defmodule Mustache do
   Get a string `source` and generate a quoted expression.
   This is an alias of `compile_string`.
   """
-  def compile(source, options // []) do
+  def compile(source, options \\ []) do
     compile_string(source, options)
   end
 
   @doc """
   Get a string `source` and generate a quoted expression.
   """
-  def compile_string(source, options // []) do
+  def compile_string(source, options \\ []) do
     Mustache.Compiler.compile(source, options)
   end
 
   @doc """
   Get a `filename` and generate a quoted expression.
   """
-  def compile_file(filename, options // []) do
+  def compile_file(filename, options \\ []) do
     compile_string(File.read!(filename), options)
   end
 

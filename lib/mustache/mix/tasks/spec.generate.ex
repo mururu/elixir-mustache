@@ -27,7 +27,7 @@ defmodule Mix.Tasks.Spec.Generate do
   """
 
   def run(args) do
-    { options, _ } = OptionParser.parse(args)
+    { options, _, _ } = OptionParser.parse(args)
 
     specs = extract_specs(options)
     content = EEx.eval_string(@template, [specs: specs])
@@ -37,7 +37,7 @@ defmodule Mix.Tasks.Spec.Generate do
 
   def extract_specs(options) do
     Path.wildcard(Path.join([@spec_path, "spec", "specs", "*.yml"]))
-      |> Enum.reject(fn(x) -> Path.basename(x) =~ %r/^~/ end)
+      |> Enum.reject(fn(x) -> Path.basename(x) =~ ~r/^~/ end)
       |> filter_by_options(options)
       |> Enum.map(&extract_tests_from_file(&1))
   end

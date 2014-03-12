@@ -3,7 +3,6 @@ defmodule Mustache.Utils do
 
   import Kernel, except: [to_binary: 1]
 
-  @doc false
   def to_coll(term, vars, bind) when is_list(term) do
     cond do
       term == [] ->
@@ -24,12 +23,10 @@ defmodule Mustache.Utils do
   def to_coll(term, _vars, _bind) when term == nil or term == false, do: []
   def to_coll(_term, vars, bind), do: [to_nilcoll(vars, bind)]
 
-  @doc false
   def to_nilcoll(vars, bind), do: Enum.map(vars, &bind[&1])
 
-  @doc false
   def to_coll_for_dot(term) when is_list(term), do: Enum.map(term, &[&1])
-  def to_col_for_dot(term), do: [[term]]
+  def to_coll_for_dot(term), do: [[term]]
 
   defp is_keyword?(list) when is_list(list), do: :lists.all(&is_keyword_tuple?(&1), list)
   defp is_keyword?(_), do: false
@@ -37,16 +34,15 @@ defmodule Mustache.Utils do
   defp is_keyword_tuple?({ x, _ }) when is_atom(x), do: true
   defp is_keyword_tuple?(_), do: false
 
-  @doc false
   def to_binary(float) when is_float(float) do
     bin = round(float * 100000000000000) |> Kernel.to_string
     { integer, decimal } = split_float(bin)
-    Kernel.to_binary([integer, ".", decimal])
+    Kernel.to_string([integer, ".", decimal])
   end
   def to_binary(other), do: Kernel.to_string(other)
 
   defp split_float(bin) do
-    String.to_char_list(bin)
+    String.to_char_list!(bin)
     |> :lists.reverse
     |> split_float(0, '')
   end
@@ -67,7 +63,6 @@ defmodule Mustache.Utils do
     split_float(t, i + 1, [h|acc])
   end
 
-  @doc false
   def recur_access(term, []), do: term
   def recur_access(term, [atom|t]) do
     if is_keyword?(term), do: recur_access(term[atom], t), else: []
@@ -78,7 +73,6 @@ defmodule Mustache.Utils do
     if is_keyword?(term), do: recur_access(term[atom], t), else: []
   end
 
-  @doc false
   def escape_html(str) do
     escape_html(:unicode.characters_to_list(str), [])
     |> Enum.reverse

@@ -14,7 +14,6 @@ defmodule Mustache.Tokenizer do
   #{ :dotted_name_section, line, contents :: [atom..] }
   #{ :dotted_name_inverted_section, line, contents :: [atom..] }
   #{ :partial, line, contents :: atom, indent :: integer }
-  @doc false
   def tokenize(bin, line) when is_binary(bin) do
     tokenize(:unicode.characters_to_list(bin), line)
   end
@@ -71,7 +70,7 @@ defmodule Mustache.Tokenizer do
     cond do
       var == :. ->
         tokenize(rest, tags, new_line, new_line, [], [{ :unescaped_dot, line, var } | acc])
-      to_string(var) =~ %r/^\w+(\.\w+)+$/ ->
+      to_string(var) =~ ~r/^\w+(\.\w+)+$/ ->
         atoms = to_string(var) |> String.split(".") |> Enum.map(&binary_to_atom(&1))
         tokenize(rest, tags, new_line, new_line, [], [{ :unescaped_dotted_name, line, atoms } | acc])
       true ->
@@ -97,7 +96,7 @@ defmodule Mustache.Tokenizer do
     cond do
       var == :. ->
         tokenize(rest, tags, new_line, new_line, [], [{ :unescaped_dot, line, var } | acc])
-      to_string(var) =~ %r/^\w+(\.\w+)+$/ ->
+      to_string(var) =~ ~r/^\w+(\.\w+)+$/ ->
         atoms = to_string(var) |> String.split(".") |> Enum.map(&binary_to_atom(&1))
         tokenize(rest, tags, new_line, new_line, [], [{ :unescaped_dotted_name, line, atoms } | acc])
       true ->
@@ -113,7 +112,7 @@ defmodule Mustache.Tokenizer do
 
     maybe_line_break = if line_break_flg, do: [:line_break], else: []
 
-    if to_string(var) =~ %r/^\w+(\.\w+)+$/ do
+    if to_string(var) =~ ~r/^\w+(\.\w+)+$/ do
       atoms = to_string(var) |> String.split(".") |> Enum.map(&binary_to_atom(&1))
       tokenize(rest, tags, new_line, new_line, [], maybe_line_break ++ [{ :dotted_name_section, line, atoms } | acc])
     else
@@ -129,7 +128,7 @@ defmodule Mustache.Tokenizer do
 
     maybe_line_break = if line_break_flg, do: [:line_break], else: []
 
-    if to_string(var) =~ %r/^\w+(\.\w+)+$/ do
+    if to_string(var) =~ ~r/^\w+(\.\w+)+$/ do
       atoms = to_string(var) |> String.split(".") |> Enum.map(&binary_to_atom(&1))
       tokenize(rest, tags, new_line, new_line, [], maybe_line_break ++ [{ :dotted_name_inverted_section, line, atoms } | acc])
     else
@@ -145,7 +144,7 @@ defmodule Mustache.Tokenizer do
 
     maybe_line_break = if line_break_flg, do: [:line_break], else: []
 
-    if to_string(var) =~ %r/^\w+(\.\w+)+$/ do
+    if to_string(var) =~ ~r/^\w+(\.\w+)+$/ do
       atoms = to_string(var) |> String.split(".") |> Enum.map(&binary_to_atom(&1))
       tokenize(rest, tags, new_line, new_line, [], maybe_line_break ++ [{ :end_section, line, atoms } | acc])
     else
@@ -172,7 +171,7 @@ defmodule Mustache.Tokenizer do
     cond do
       var == :. ->
         tokenize(rest, tags, new_line, new_line, [], [{ :dot, line, var } | acc])
-      to_string(var) =~ %r/^\w+(\.\w+)+$/ ->
+      to_string(var) =~ ~r/^\w+(\.\w+)+$/ ->
         atoms = to_string(var) |> String.split(".") |> Enum.map(&binary_to_atom(&1))
         tokenize(rest, tags, new_line, new_line, [], [{ :dotted_name, line, atoms } | acc])
       true ->
@@ -222,7 +221,7 @@ defmodule Mustache.Tokenizer do
 
   # tokenize variable
 
-  defp tokenize_variable(list, ctag, line, buffer, ignore_break_flg // false, finish_flg // false)
+  defp tokenize_variable(list, ctag, line, buffer, ignore_break_flg \\ false, finish_flg \\ false)
 
   defp tokenize_variable(' ' ++ t, ctag, line, [], ignore_break_flg, finish_flg) do
     tokenize_variable(t, ctag, line, [], ignore_break_flg, finish_flg)
@@ -278,7 +277,7 @@ defmodule Mustache.Tokenizer do
   defp strip_space([? |t]), do: t
   defp strip_space(string), do: string
 
-  defp tokenize_new_otag(string, buffer, finish_flg // false)
+  defp tokenize_new_otag(string, buffer, finish_flg \\ false)
 
   defp tokenize_new_otag('', _, _) do
     raise SyntaxError, description: "Unclosed tag"
@@ -323,7 +322,7 @@ defmodule Mustache.Tokenizer do
   # tokenize text
 
   # last argument is flag whether tail whitespaces should be ignored
-  defp tokenize_text(line, buffer, acc, ignore_tail_whitespaces_flg // false)
+  defp tokenize_text(line, buffer, acc, ignore_tail_whitespaces_flg \\ false)
 
   defp tokenize_text(line, buffer, acc, true) do
     [ { :text, line, String.rstrip(:unicode.characters_to_binary(Enum.reverse(buffer)), ? ) } | acc]
