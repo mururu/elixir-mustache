@@ -87,7 +87,7 @@ defmodule Mustache.Utils do
     { '>',  '&gt;' },
   ]
 
-  lc { k, v } inlist @table_for_escape_html do
+  for { k, v } <- @table_for_escape_html do
     defp escape_html(unquote(k) ++ t, acc) do
       escape_html(t, unquote(Enum.reverse(v)) ++ acc)
     end
