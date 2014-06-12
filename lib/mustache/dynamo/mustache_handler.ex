@@ -63,11 +63,11 @@ if Enum.all? [Dynamo.Templates.Handler, Dynamo.Template], &Code.ensure_loaded?(&
     end
 
     defp vars(locals) do
-      lc name inlist locals, do: { name, [], nil }
+      for name <- locals, do: { name, [], nil }
     end
 
     defp match(locals) do
-      lc var inlist locals, do: { :=, [], [{ :_, [], nil }, var] }
+      for var <- locals, do: { :=, [], [{ :_, [], nil }, var] }
     end
   end
 end
