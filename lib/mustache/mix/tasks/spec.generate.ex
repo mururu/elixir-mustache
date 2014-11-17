@@ -67,7 +67,7 @@ defmodule Mix.Tasks.Spec.Generate do
   end
 
   def to_keyword({ key, value }) when is_binary(key) do
-    { binary_to_atom(key), to_keyword(value) }
+    { :erlang.binary_to_atom(key, :utf8), to_keyword(value) }
   end
 
   def to_keyword(other), do: other
