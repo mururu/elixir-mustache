@@ -242,13 +242,13 @@ defmodule Mustache.Tokenizer do
           _ when buffer == [] ->
             raise SyntaxError, line: line, description: "No contents in tag"
           [?\r,?\n|t] when ignore_break_flg ->
-            { buffer |> Enum.reverse |> list_to_atom, line, t, true }
+            { buffer |> Enum.reverse |> :erlang.list_to_atom, line, t, true }
           [?\n|t] when ignore_break_flg ->
-            { buffer |> Enum.reverse |> list_to_atom, line, t, true }
+            { buffer |> Enum.reverse |> :erlang.list_to_atom, line, t, true }
           [] when ignore_break_flg ->
-            { buffer |> Enum.reverse |> list_to_atom, line, '', true }
+            { buffer |> Enum.reverse |> :erlang.list_to_atom, line, '', true }
           t ->
-            { buffer |> Enum.reverse |> list_to_atom, line, t, false }
+            { buffer |> Enum.reverse |> :erlang.list_to_atom, line, t, false }
         end
       _ ->
         case string do
