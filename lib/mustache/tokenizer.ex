@@ -376,4 +376,8 @@ defmodule Mustache.Tokenizer do
 
   defp head_is_line_break?([:line_break|_]), do: true
   defp head_is_line_break?(_), do: false
+  
+  defp binary_to_atom(binary) do
+    :erlang.binary_to_atom(binary, :utf8)
+  end
 end
